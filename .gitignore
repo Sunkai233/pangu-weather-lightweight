@@ -1,0 +1,19 @@
+# 缓存/编译/系统文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+# 大数据/中间权重留服务器,不入库
+era5*/
+*.h5
+*.nc
+结果备份/
+_stage/
+dist/
+build/
+*.egg-info/

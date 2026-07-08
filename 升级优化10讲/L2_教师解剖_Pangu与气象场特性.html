@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L2 教师解剖:Pangu 与气象场特性</title>
+<style>
+  :root{
+    --ink:#1e232a; --ink2:#3b444e; --mut:#6b7480; --line:#e7e9ec;
+    --paper:#ffffff; --band:#f6f8fa; --accent:#1d6fb8; --accent2:#b45309;
+    --u:#0e7490; --v:#7c3aed; --w:#b91c1c; --good:#15803d; --warn:#a16207;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.9;font-size:16.5px;letter-spacing:.1px}
+  .wrap{max-width:940px;margin:0 auto;padding:0 24px 100px}
+  header.hero{padding:48px 24px 30px;border-bottom:3px solid var(--accent);background:linear-gradient(180deg,#fafcff,#fff)}
+  .hero-inner{max-width:940px;margin:0 auto}
+  .course{color:var(--accent);font-weight:700;letter-spacing:2px;font-size:13px}
+  .lnum{display:inline-block;background:var(--accent);color:#fff;font-weight:800;border-radius:8px;padding:2px 12px;font-size:14px;margin-right:8px}
+  h1{font-size:31px;line-height:1.32;margin:12px 0 8px}
+  .sub{color:var(--mut);font-size:16px;max-width:820px}
+  .pills{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap}
+  .pill{background:var(--band);border:1px solid var(--line);border-radius:999px;padding:5px 13px;font-size:13px;color:var(--ink2)}
+  .pill b{color:var(--accent)}
+  h2{font-size:24px;margin:52px 0 10px;padding-top:12px;border-top:1px solid var(--line)}
+  h2 .n{display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;border-radius:9px;background:var(--accent);color:#fff;font-size:17px;margin-right:12px;vertical-align:3px}
+  h3{font-size:19px;margin:30px 0 6px;color:var(--ink)}
+  h4{font-size:16px;margin:20px 0 4px;color:var(--accent2);letter-spacing:.3px}
+  p{margin:11px 0} .lead{font-size:17.5px;color:var(--ink2)}
+  em{font-style:normal;background:linear-gradient(transparent 60%,#fde68a 60%);padding:0 1px;font-weight:600}
+  b.k{color:var(--accent)}
+  code{background:#f1f4f7;border:1px solid #e4e8ec;border-radius:5px;padding:1px 6px;font-family:"Cascadia Code",Consolas,monospace;font-size:13.5px;color:#0b5563}
+  ul,ol{margin:11px 0;padding-left:24px} li{margin:8px 0}
+  .band{background:var(--band);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:22px 0}
+  .callout{border-left:5px solid var(--accent);background:#f0f7fd;border-radius:0 12px 12px 0;padding:15px 19px;margin:20px 0}
+  .callout.good{border-color:var(--good);background:#f1fcf5}
+  .callout.warn{border-color:var(--warn);background:#fffdf3}
+  .callout .t{font-weight:700;margin-bottom:3px;letter-spacing:.3px}
+  figure{margin:26px 0;text-align:center}
+  figure svg{max-width:100%;height:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+  figcaption{color:var(--mut);font-size:13.5px;margin-top:10px}
+  .fx{font-family:"Cambria Math","Times New Roman",serif;font-style:italic;font-size:17px}
+  .card{border:1px solid var(--line);border-radius:14px;padding:16px 19px;background:#fff;margin:14px 0}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:18px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+  @media(max-width:720px){.grid3,.grid2{grid-template-columns:1fr}}
+  .hipbox{border:1px dashed #b45309;background:#fffdf6;border-radius:12px;padding:15px 19px;margin:20px 0}
+  .hipbox .t{color:var(--accent2);font-weight:700;letter-spacing:.5px}
+  .num{font-variant-numeric:tabular-nums}
+  .stat{display:flex;align-items:baseline;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}
+  .stat .lab{width:150px;color:var(--mut);font-size:14px}
+  .stat .t{color:var(--accent);font-weight:700}
+  .toc{columns:2;gap:20px;margin:16px 0;font-size:14.5px}
+  @media(max-width:720px){.toc{columns:1}}
+  .toc a{color:var(--accent);text-decoration:none} .toc a:hover{text-decoration:underline}
+  .foot{margin-top:60px;padding-top:20px;border-top:3px solid var(--accent);color:var(--mut);font-size:13.5px}
+  .keypts{background:linear-gradient(180deg,#f0f7fd,#fff);border:1px solid #cfe3f3;border-radius:14px;padding:18px 22px;margin:24px 0}
+  .keypts li{margin:9px 0}
+  .tagrow{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+  .tag{background:#eef4fa;border:1px solid #d6e4f0;border-radius:8px;padding:4px 11px;font-size:13px;color:var(--ink2)}
+  .math{border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;margin:16px 0;overflow:hidden}
+  .math .hd{background:#1e293b;color:#e2e8f0;font-size:13px;font-weight:700;letter-spacing:1px;padding:6px 15px}
+  .math .bd{padding:13px 18px;font-size:15px}
+  .math .eq{font-family:"Cambria Math","Times New Roman",serif;font-size:18px;text-align:center;margin:12px 0;color:#0f172a}
+  .ref{border:1px solid var(--line);border-left:4px solid var(--good);border-radius:10px;margin:16px 0;overflow:hidden}
+  .ref .rh{background:#f1fcf5;padding:9px 16px;font-weight:700;color:var(--good);font-size:15px;border-bottom:1px solid var(--line)}
+  .ref .rb{padding:12px 16px}
+  .ref .row{margin:7px 0;font-size:14.5px}
+  .ref .lab{display:inline-block;min-width:78px;font-weight:700;color:var(--accent2);font-size:12.5px;vertical-align:top}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <div class="course">先导杯 · 气象大模型轻量化 · 各模块升级优化 10 讲</div>
+    <h1><span class="lnum">L2</span>教师解剖:Pangu 与气象场特性</h1>
+    <p class="sub">上一课我们把 U/V/W 这把尺子讲透了,知道要拿 <b>64.22M</b> 的教师去比。这一课把教师<b>Pangu-Weather</b> 拆开——
+      它长什么样、气象场为什么难、输入输出是什么规格。<em>读懂教师,才知道 5.19M 的学生该保留什么接口、砍掉什么冗余、在哪里发力。</em></p>
+    <div class="pills">
+      <span class="pill">3D Earth-Specific Transformer</span>
+      <span class="pill">输入 <b>[B,72,721,1440]</b></span>
+      <span class="pill">U 形 <b>2-6-6-2</b></span>
+      <span class="pill">token <b>521280</b></span>
+      <span class="pill">真参数 <b>64.22M</b> / 权重 1868MB</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<div class="band">
+  <b class="k">本课地图</b>
+  <div class="toc">
+    <a href="#s1">① 为什么先解剖教师</a><br>
+    <a href="#s2">② 气象预报是什么问题</a><br>
+    <a href="#s3">③ 气象场的五个"难"</a><br>
+    <a href="#s4">④ 教师 I/O:72 个通道怎么来的</a><br>
+    <a href="#s5">⑤ Pangu 架构解剖(U 形 3D-EST)</a><br>
+    <a href="#s6">⑥ 三个 Earth-Specific 关键设计</a><br>
+    <a href="#s7">⑦ 教师的"贵"到底贵在哪</a><br>
+    <a href="#s8">⑧ HIP/DCU 视角 + 本课要点</a>
+  </div>
+</div>
+
+<!-- 1 -->
+<h2 id="s1"><span class="n">1</span>为什么先解剖教师</h2>
+<p class="lead">这门课的主线是<b>知识蒸馏</b>——让小学生"照着大教师学"。既然要照着学,就必须先看清被照的对象:</p>
+<ul>
+  <li><b>接口要对齐</b>:学生的输入输出必须和教师<em>逐通道一致</em>,才能拿教师的输出当监督信号、才能用官方 <code>result.py</code> 评测。所以教师的 I/O 规格是学生设计的硬约束。</li>
+  <li><b>要知道教师强在哪</b>:Pangu 之所以准,靠的是几个关键设计(3D 注意力、Earth-specific 偏置)。学生要在小规模下逼近它,得<em>保留精髓、换掉贵的部分</em>。</li>
+  <li><b>要知道气象场难在哪</b>:百万格点、多层多变量、长程依赖——这些"难"决定了学生的骨架为什么要用 U 形下采样 + 稀疏全局注意力(下一课 L3 展开)。</li>
+</ul>
+
+<!-- 2 -->
+<h2 id="s2"><span class="n">2</span>气象预报是什么问题</h2>
+<p>用一句话定义任务:<b>给定当前时刻的全球大气三维状态,预测 6 小时后的状态</b>。数据来自 <b>ERA5 再分析</b>(欧洲中期天气预报中心的历史气象场,可当作"真值")。</p>
+<div class="band">
+  <div class="stat"><span class="lab">空间网格</span><span class="t num">721 × 1440</span><span style="color:var(--mut)">纬度 × 经度,0.25° 分辨率,全球覆盖(≈ 每 27km 一个格点)</span></div>
+  <div class="stat"><span class="lab">垂直分层</span><span class="t num">13 层气压面</span><span style="color:var(--mut)">1000/925/850/700/600/500/400/300/250/200/150/100/50 hPa</span></div>
+  <div class="stat"><span class="lab">预报步长</span><span class="t num">+6 小时</span><span style="color:var(--mut)">单步预报;更长时效靠自回归滚动</span></div>
+  <div class="stat" style="border:none"><span class="lab">本质</span><span class="t">时空回归</span><span style="color:var(--mut)">输入一个高维场 → 输出同形状的高维场,不是分类</span></div>
+</div>
+<p>注意最后一行:这是个<em>场到场(field-to-field)的回归</em>问题,输入输出都是巨大的多维张量,评价用 RMSE / ACC。这和大语言模型的"逐 token 生成"完全不同,也决定了 W(精度)对数值特别敏感——L1 里"显存优化要 bit-exact"的讲究就来自这里。</p>
+
+<!-- 3 -->
+<h2 id="s3"><span class="n">3</span>气象场的五个"难"</h2>
+<p class="lead">为什么气象大模型必须很大?因为气象场同时踩中五个"难点"。这五点也正是学生轻量化时要小心翻越的坑。</p>
+
+<figure>
+<svg viewBox="0 0 900 300" role="img" aria-label="气象场数据立方体">
+  <text x="24" y="28" font-size="16" font-weight="700" fill="#1e232a">气象场 = 一个巨大的多变量三维立方体</text>
+  <!-- cube -->
+  <g>
+    <!-- back face -->
+    <polygon points="230,90 560,90 620,55 290,55" fill="#e0f2fe" stroke="#0ea5e9"/>
+    <polygon points="560,90 560,240 620,205 620,55" fill="#bae6fd" stroke="#0ea5e9"/>
+    <polygon points="230,90 560,90 560,240 230,240" fill="#f0f9ff" stroke="#0ea5e9"/>
+    <!-- level lines -->
+    <line x1="230" y1="120" x2="560" y2="120" stroke="#7dd3fc" stroke-width="0.8"/>
+    <line x1="230" y1="150" x2="560" y2="150" stroke="#7dd3fc" stroke-width="0.8"/>
+    <line x1="230" y1="180" x2="560" y2="180" stroke="#7dd3fc" stroke-width="0.8"/>
+    <line x1="230" y1="210" x2="560" y2="210" stroke="#7dd3fc" stroke-width="0.8"/>
+  </g>
+  <text x="395" y="262" font-size="13" fill="#0369a1" text-anchor="middle">经度 1440 →</text>
+  <text x="205" y="170" font-size="13" fill="#0369a1" text-anchor="middle" transform="rotate(-90 205 170)">纬度 721 →</text>
+  <text x="595" y="140" font-size="12" fill="#0369a1" text-anchor="middle" transform="rotate(-30 595 140)">13 层气压 →</text>
+  <!-- variables list -->
+  <g font-size="12.5" fill="#3b444e">
+    <text x="660" y="70" font-weight="700" fill="#b45309">高空 5 变量 ×13层</text>
+    <text x="660" y="92">z 位势高度</text>
+    <text x="660" y="112">q 比湿</text>
+    <text x="660" y="132">t 气温</text>
+    <text x="660" y="152">u / v 风场</text>
+    <text x="660" y="185" font-weight="700" fill="#b45309">地表 4 变量</text>
+    <text x="660" y="207">mslp 海平面气压</text>
+    <text x="660" y="227">10m u/v 风</text>
+    <text x="660" y="247">2m 温度</text>
+  </g>
+  <text x="24" y="290" font-size="12" fill="#6b7480">单个时刻的数据量:约 (4 + 5×13) × 721 × 1440 ≈ <tspan font-weight="700">7160 万</tspan>个数</text>
+</svg>
+<figcaption>一个"当前时刻"的大气状态就是这样一个立方体:纬 × 经 × 层,每个格点上还叠着多个物理变量,合计约 7000 万个数。模型要把这一整块映射成 6 小时后的另一整块。</figcaption>
+</figure>
+
+<div class="grid2">
+  <div class="card"><h4>难点① 规模巨大</h4><p>721×1440 ≈ 百万格点,即使切成 patch 后仍有 <b>52 万 token</b>。注意力是 O(N²) 的,直接做全局注意力算不动。</p></div>
+  <div class="card"><h4>难点② 多层三维</h4><p>13 个气压层在垂直方向<em>物理耦合</em>(静力平衡、对流)。不能当成独立的 2D 图,必须 3D 建模。</p></div>
+  <div class="card"><h4>难点③ 多变量异质</h4><p>气压/风/温/湿量纲差异大、耦合强(地转风、湿度-温度)。学生若丢掉某变量的信息,连带的其它变量也会预报歪。</p></div>
+  <div class="card"><h4>难点④ 长程依赖</h4><p>气旋、急流、罗斯贝波等天气系统<em>跨越数千公里</em>。局部窗口看不到全局形势,必须有全局感受野。</p></div>
+</div>
+<div class="callout">
+  <div class="t">难点⑤ 球面几何 + 物理一致性</div>
+  <p style="margin:6px 0">地球是<b>球面</b>不是平面:极地格点密、赤道格点疏,同一个"窗口"在不同纬度覆盖的真实距离不同——所以模型不能假设"平移不变"(这正是 Pangu 用 Earth-specific 偏置的原因,见第 6 节)。
+  再加上各变量间有<em>物理约束</em>,小模型很容易预报出物理上自相矛盾的场(比如风和气压不匹配)——这是 L7 物理先验要处理的问题。</p>
+</div>
+
+<!-- 4 -->
+<h2 id="s4"><span class="n">4</span>教师 I/O:72 个通道是怎么来的</h2>
+<p>翻开教师 <code>pangu.py</code> 的 <code>forward</code>,输入张量注释写得很清楚:<code>x: [batch, 4+3+5*13, lat, lon]</code>。拆开这 72 个通道:</p>
+
+<figure>
+<svg viewBox="0 0 900 340" role="img" aria-label="教师输入输出72通道分解">
+  <text x="24" y="28" font-size="16" font-weight="700" fill="#1e232a">输入 72 通道 = 4 地表 + 3 常量掩膜 + 5×13 高空</text>
+  <!-- input stack -->
+  <text x="90" y="60" font-size="13" font-weight="700" fill="#3b444e" text-anchor="middle">输入 x[B,72,721,1440]</text>
+  <rect x="40" y="72" width="100" height="34" rx="5" fill="#dcfce7" stroke="#16a34a"/><text x="90" y="94" font-size="12" fill="#15803d" text-anchor="middle">4 地表变量</text>
+  <rect x="40" y="110" width="100" height="30" rx="5" fill="#fef9c3" stroke="#ca8a04"/><text x="90" y="130" font-size="11.5" fill="#a16207" text-anchor="middle">3 常量掩膜</text>
+  <rect x="40" y="144" width="100" height="120" rx="5" fill="#dbeafe" stroke="#2563eb"/><text x="90" y="200" font-size="12" fill="#1d4ed8" text-anchor="middle">5 变量 ×</text><text x="90" y="218" font-size="12" fill="#1d4ed8" text-anchor="middle">13 层 = 65</text>
+  <text x="90" y="284" font-size="11" fill="#6b7480" text-anchor="middle">x[:, :7] 走 2D 分支</text>
+  <text x="90" y="300" font-size="11" fill="#6b7480" text-anchor="middle">x[:, 7:] 走 3D 分支</text>
+  <!-- arrows -->
+  <text x="200" y="120" font-size="22" fill="#94a3b8">→</text>
+  <!-- embedding -->
+  <rect x="230" y="80" width="130" height="70" rx="8" fill="#f6f8fa" stroke="#cbd5e1"/><text x="295" y="108" font-size="12.5" fill="#1e232a" text-anchor="middle">PatchEmbed2D</text><text x="295" y="128" font-size="11" fill="#6b7480" text-anchor="middle">地表→[192,181,360]</text>
+  <rect x="230" y="165" width="130" height="80" rx="8" fill="#f6f8fa" stroke="#cbd5e1"/><text x="295" y="196" font-size="12.5" fill="#1e232a" text-anchor="middle">PatchEmbed3D</text><text x="295" y="216" font-size="11" fill="#6b7480" text-anchor="middle">高空→[192,7,181,360]</text>
+  <!-- concat -->
+  <text x="378" y="165" font-size="22" fill="#94a3b8">→</text>
+  <rect x="410" y="110" width="120" height="90" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="470" y="140" font-size="12.5" fill="#6d28d9" text-anchor="middle">concat 成</text>
+  <text x="470" y="160" font-size="12.5" fill="#6d28d9" text-anchor="middle">8×181×360</text>
+  <text x="470" y="182" font-size="11" fill="#6b7480" text-anchor="middle">= 521280 token</text>
+  <!-- backbone -->
+  <text x="545" y="160" font-size="22" fill="#94a3b8">→</text>
+  <rect x="575" y="115" width="120" height="80" rx="8" fill="#fef2f2" stroke="#b91c1c"/><text x="635" y="150" font-size="12.5" fill="#b91c1c" text-anchor="middle">U 形骨干</text><text x="635" y="170" font-size="11" fill="#6b7480" text-anchor="middle">(第 5 节)</text>
+  <!-- recovery -->
+  <text x="710" y="160" font-size="22" fill="#94a3b8">→</text>
+  <rect x="740" y="90" width="135" height="60" rx="8" fill="#dcfce7" stroke="#16a34a"/><text x="807" y="115" font-size="12" fill="#15803d" text-anchor="middle">Recovery2D</text><text x="807" y="135" font-size="11" fill="#6b7480" text-anchor="middle">surface[B,4,721,1440]</text>
+  <rect x="740" y="160" width="135" height="70" rx="8" fill="#dbeafe" stroke="#2563eb"/><text x="807" y="188" font-size="12" fill="#1d4ed8" text-anchor="middle">Recovery3D</text><text x="807" y="208" font-size="11" fill="#6b7480" text-anchor="middle">upper[B,5,13,721,1440]</text>
+  <text x="24" y="325" font-size="12.5" fill="#6b7480">关键:输出<tspan font-weight="700" fill="#b91c1c">不含</tspan>那 3 个常量掩膜(地形/海陆/土壤是固定输入,不预测)——所以评测口径是 4+5×13 = 69 通道</text>
+</svg>
+<figcaption>72 = <b>4 地表变量</b>(mslp/10m u/10m v/2m t)+ <b>3 常量掩膜</b>(地形/海陆/土壤类型,给模型地理先验)+ <b>5 高空变量 × 13 层 = 65</b>。地表 7 通道走 2D 嵌入,高空 65 通道走 3D 嵌入,再拼成一个 8 层的 3D token 立方体喂给骨干。</figcaption>
+</figure>
+
+<div class="callout">
+  <div class="t">学生必须继承的硬约束</div>
+  <p style="margin:6px 0">学生的 stem(输入嵌入)和 head(输出还原)<b>直接复用官方的 PanguEmbedding / PanguRecovery 模块</b>——这样输入输出形状与教师逐通道一致,教师输出才能当蒸馏监督、官方评测脚本才能直接打分。学生能改的是<em>中间的骨干</em>,不能改 I/O 接口。这是 L3 学生设计的起点。</p>
+</div>
+
+<!-- 5 -->
+<h2 id="s5"><span class="n">5</span>Pangu 架构解剖:U 形 3D-EST</h2>
+<p class="lead">Pangu 全名 <b>3D Earth-Specific Transformer</b>,骨架是一个 <b>U 形的 4 层 3D Swin Transformer</b>(编码-下采样-解码-上采样 + 跳连)。逐层看 <code>pangu.py</code>:</p>
+
+<figure>
+<svg viewBox="0 0 900 380" role="img" aria-label="Pangu U形架构">
+  <defs><marker id="a2" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
+  <text x="24" y="28" font-size="16" font-weight="700" fill="#1e232a">Pangu U 形骨干:编码器下采样、解码器上采样、跳连拼接</text>
+  <!-- input -->
+  <rect x="30" y="150" width="90" height="60" rx="8" fill="#f6f8fa" stroke="#cbd5e1"/><text x="75" y="176" font-size="11.5" fill="#1e232a" text-anchor="middle">嵌入后</text><text x="75" y="194" font-size="10.5" fill="#6b7480" text-anchor="middle">8×181×360</text>
+  <!-- layer1 -->
+  <rect x="150" y="140" width="110" height="80" rx="8" fill="#ecfeff" stroke="#0e7490"/><text x="205" y="166" font-size="13" font-weight="700" fill="#0e7490" text-anchor="middle">layer1</text><text x="205" y="186" font-size="11" fill="#6b7480" text-anchor="middle">depth 2 · dim192</text><text x="205" y="203" font-size="11" fill="#6b7480" text-anchor="middle">heads 6</text>
+  <line x1="120" y1="180" x2="148" y2="180" stroke="#94a3b8" stroke-width="2" marker-end="url(#a2)"/>
+  <!-- downsample -->
+  <path d="M270,180 l30,0" stroke="#94a3b8" stroke-width="2" marker-end="url(#a2)"/>
+  <polygon points="305,155 355,155 340,205 320,205" fill="#fef3c7" stroke="#ca8a04"/><text x="330" y="184" font-size="10.5" fill="#a16207" text-anchor="middle">↓采样</text>
+  <!-- layer2/3 -->
+  <rect x="375" y="130" width="120" height="100" rx="8" fill="#fef2f2" stroke="#b91c1c"/><text x="435" y="158" font-size="13" font-weight="700" fill="#b91c1c" text-anchor="middle">layer2 + layer3</text><text x="435" y="178" font-size="11" fill="#6b7480" text-anchor="middle">depth 6+6</text><text x="435" y="195" font-size="11" fill="#6b7480" text-anchor="middle">dim384 · heads12</text><text x="435" y="216" font-size="10.5" fill="#6b7480" text-anchor="middle">主干算力在这(1/4 token)</text>
+  <line x1="355" y1="180" x2="373" y2="180" stroke="#94a3b8" stroke-width="2" marker-end="url(#a2)"/>
+  <!-- upsample -->
+  <path d="M495,180 l30,0" stroke="#94a3b8" stroke-width="2" marker-end="url(#a2)"/>
+  <polygon points="530,155 550,155 565,205 545,205" fill="#fef3c7" stroke="#ca8a04"/><text x="548" y="184" font-size="10.5" fill="#a16207" text-anchor="middle">↑采样</text>
+  <!-- layer4 -->
+  <rect x="585" y="140" width="110" height="80" rx="8" fill="#ecfeff" stroke="#0e7490"/><text x="640" y="166" font-size="13" font-weight="700" fill="#0e7490" text-anchor="middle">layer4</text><text x="640" y="186" font-size="11" fill="#6b7480" text-anchor="middle">depth 2 · dim192</text><text x="640" y="203" font-size="11" fill="#6b7480" text-anchor="middle">heads 6</text>
+  <line x1="565" y1="180" x2="583" y2="180" stroke="#94a3b8" stroke-width="2" marker-end="url(#a2)"/>
+  <!-- recovery -->
+  <path d="M695,180 l30,0" stroke="#94a3b8" stroke-width="2" marker-end="url(#a2)"/>
+  <rect x="730" y="145" width="140" height="70" rx="8" fill="#dcfce7" stroke="#16a34a"/><text x="800" y="172" font-size="12" fill="#15803d" text-anchor="middle">concat + Recovery</text><text x="800" y="192" font-size="11" fill="#6b7480" text-anchor="middle">→ 预报场</text>
+  <!-- skip connection -->
+  <path d="M205,140 C205,70 640,70 640,138" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#a2)"/>
+  <text x="420" y="66" font-size="12.5" font-weight="700" fill="#7c3aed" text-anchor="middle">skip 跳连:layer1 输出 → concat 到 layer4 输出(保住高分辨率细节)</text>
+  <!-- bottom note -->
+  <text x="24" y="300" font-size="13" fill="#3b444e">编码器:<tspan font-weight="700">layer1(全分辨率,2块)→ 下采样到 1/4 token → layer2(6块)</tspan></text>
+  <text x="24" y="324" font-size="13" fill="#3b444e">解码器:<tspan font-weight="700">layer3(6块,仍 1/4)→ 上采样回全分辨率 → layer4(2块)</tspan></text>
+  <text x="24" y="348" font-size="13" fill="#3b444e">深度配比 <tspan font-weight="700" fill="#b91c1c">2-6-6-2</tspan>:主干的 12 个 block 都跑在下采样后的 1/4 token 上,省算力又保感受野</text>
+</svg>
+<figcaption>这是 U-Net 思路搬进 Transformer:两端在全分辨率抓细节(浅,各 2 块),中间在 1/4 token 上堆深(各 6 块)做主干推理,再靠 skip 把浅层细节补回来。<b>"主干算力放在下采样后的 token 上"</b>是省算力的核心思想——学生会把它用到极致(L3)。</figcaption>
+</figure>
+
+<p>关键尺寸(<code>patch_size=(2,4,4)</code>、<code>embed_dim=192</code>):嵌入把 13 层压成 7 个层-patch(<code>ceil(13/2)</code>)、再叠 1 个地表层 = 8;纬经 721/4≈181、1440/4=360。所以 token 数 = 8×181×360 = <b>521280</b>。下采样后纬经减半到 91×180,主干 token 降到约 1/4。</p>
+
+<!-- 6 -->
+<h2 id="s6"><span class="n">6</span>三个 "Earth-Specific" 关键设计</h2>
+<p class="lead">Pangu 比普通 Vision Transformer 准,靠的是三个专为"地球气象"定制的设计。理解它们,才知道学生要保留什么。</p>
+<div class="grid3">
+  <div class="card">
+    <h4>① 3D 窗口注意力</h4>
+    <p>用 Swin 式<b>窗口注意力</b>(window <code>(2,6,12)</code>,即 层×纬×经),把 O(N²) 的全局注意力降成窗口内的局部注意力,再靠移位窗口跨窗交流。<em>3D 窗口</em>让垂直层之间也能直接交互(捕捉静力/对流耦合)。</p>
+  </div>
+  <div class="card">
+    <h4>② Earth-Specific 位置偏置</h4>
+    <p>普通 ViT 假设平移不变,但地球不是——<b>同一窗口在极地和赤道覆盖的真实范围不同</b>。Pangu 给注意力加了<em>依赖绝对纬度/高度的可学习偏置</em>,让模型知道"我在地球的哪个位置"。这是"Earth-Specific"的来历。</p>
+  </div>
+  <div class="card">
+    <h4>③ 把大气当 3D</h4>
+    <p>不是把 13 层当 13 张独立的图,而是把气压层当成<b>深度维</b>做 3D patch 嵌入(<code>PatchEmbed3D</code>)。垂直方向的物理结构被显式建模,预报更符合大气动力学。</p>
+  </div>
+</div>
+<div class="callout good">
+  <div class="t">学生的取舍(L3/L4 会落地)</div>
+  <p style="margin:6px 0"><b>保留</b>:3D 结构(仍把层当深度维)、U 形下采样、官方 stem/head 接口。
+  <b>替换</b>:把"移位窗口注意力"这种对 DCU 稠密 GEMM 不太友好、实现复杂的部分,换成<em>局部窗口 + grid 等距稀疏全局</em>的交替设计——既有全局感受野,又对国产卡的 GEMM 友好(L3 详解)。
+  <b>简化</b>:Earth-specific 偏置在小模型里用更轻的相对位置 + QK-Norm 近似(L4)。</p>
+</div>
+
+<!-- 7 -->
+<div class="math">
+  <div class="hd">数学原理 · 窗口注意力为什么能把 O(N²) 压成线性</div>
+  <div class="bd">
+    <p style="margin:5px 0">全局注意力让每个 token 和<em>所有</em> N 个 token 算相似度,复杂度 <span class="fx">O(N²·d)</span>。当 N=52 万时,N² 是天文数字,根本算不动。</p>
+    <p style="margin:5px 0">窗口注意力把 N 个 token 切成许多小窗口(每窗 w 个 token,w≪N),<b>注意力只在窗口内部算</b>:</p>
+    <div class="eq">全局 O(N²·d)　⟶　窗口 O(N·w·d)　(w 固定,故线性于 N)</div>
+    <p style="margin:5px 0">代价是单个窗口看不到全局→靠"移位窗口"跨窗交流补回感受野。Pangu 还给注意力加了<b>依赖绝对纬度的位置偏置</b>:<span class="fx">attn = QKᵀ/√d + B(Δpos, lat)</span>——这就是"Earth-Specific"的数学形式。</p>
+  </div>
+</div>
+<div class="ref">
+  <div class="rh">参考项目 · Swin Transformer(Liu 2021)→ Pangu-Weather(Bi et al., Nature 2023)</div>
+  <div class="rb">
+    <div class="row"><span class="lab">抽象问题</span>高分辨率<b>规则网格</b>上,如何让注意力既有大感受野、又不被 O(N²) 拖垮?Swin 的答案是<b>窗口 + 移位窗口</b>,把视觉 Transformer 做成线性复杂度的通用骨干。</div>
+    <div class="row"><span class="lab">怎么变好</span>Swin 成为 CV 的主干范式;Pangu 把它<b>3D 化</b>(气压层当深度维)用于气象,是首个在中期预报上<em>超越传统数值天气预报</em>的 AI 模型(发表于 Nature)。</div>
+    <div class="row"><span class="lab">桥接到我们</span>我们和教师面对<b>同一个抽象问题</b>:高分辨率规则网格的全局建模。教师选了移位窗口,我们选 grid 等距稀疏(L3)——都是"O(N²)→线性"的不同解法。<b>正因为读懂了教师窗口注意力的数学,才知道学生该继承什么(3D 结构)、换什么(移位窗口的不规则 gather 对 DCU 不友好,换成规整的 grid)。</b></div>
+  </div>
+</div>
+
+<h2 id="s7"><span class="n">7</span>教师的"贵"到底贵在哪</h2>
+<p>教师权重文件 1868MB,但<b>真参数只有 64.22M</b>(fp32 约 257MB)。剩下 1.6GB 是什么?——是<em>窗口注意力的注意力掩膜 / Earth-specific 偏置这些 buffer</em>。这恰恰暴露了教师"贵"的根源不在参数,而在它复杂的注意力机制:</p>
+<div class="band">
+  <div class="stat"><span class="lab">真参数</span><span class="t num">64.22 M</span><span style="color:var(--mut)">≈ 257MB(fp32)</span></div>
+  <div class="stat"><span class="lab">权重文件</span><span class="t num">1868 MB</span><span style="color:var(--mut)">大头是 attn_mask / 偏置 buffer(约 1.6GB)</span></div>
+  <div class="stat"><span class="lab">推理峰值显存</span><span class="t num">12469 MB</span><span style="color:var(--mut)">52 万 token 的注意力中间激活撑爆显存</span></div>
+  <div class="stat" style="border:none"><span class="lab">推理时长</span><span class="t num">979.9 ms</span><span style="color:var(--mut)">深层窗口注意力 + 高分辨率卷积</span></div>
+</div>
+<div class="callout warn">
+  <div class="t">这给学生的启示</div>
+  <p style="margin:6px 0">教师的显存/时长瓶颈在<b>"52 万 token × 深层窗口注意力"</b>。所以学生要省 U(显存)和 V(时长),最有效的杠杆不是砍参数(参数才 257MB),而是:
+  ① <em>更狠的下采样</em>(让主干 token 更少)② <em>更便宜的全局注意力</em>(grid 稀疏,O(N·M) 而非 O(N²))③ <em>推理期释放中间激活</em>(L9 的 tiling)。这条思路贯穿后面所有优化。</p>
+</div>
+
+<!-- 8 -->
+<h2 id="s8"><span class="n">8</span>HIP/DCU 视角 + 本课要点</h2>
+<div class="hipbox">
+  <div class="t">教师架构在国产海光 DCU(gfx936)上的落点</div>
+  <p style="margin:6px 0">Pangu 的<b>移位窗口注意力</b>会产生大量不规则的 gather/mask 操作,在 DCU 上比规整的稠密 <code>GEMM</code> 更难榨满 <code>Matrix Core</code>(对标 NVIDIA Tensor Core)。
+  这就是学生选 <b>grid 等距稀疏全局注意力</b> 的硬件理由——它能整理成规整的稠密矩阵乘,直接吃满 <code>rocBLAS/hipBLASLt</code>。用 <code>hy-smi</code>(对标 <code>nvidia-smi</code>)看显存、用 <code>rocprof/omniperf</code>(对标 <code>ncu</code>)看算子占比,方法论和 CUDA 一致,只是换工具名。L10 会手写 HIP flash 核把注意力这块再压一刀。</p>
+</div>
+
+<div class="keypts">
+  <b class="k" style="font-size:17px">本课要点(记住这 6 条)</b>
+  <ol>
+    <li><b>任务</b>:给定当前大气三维状态,回归出 6 小时后的场。网格 721×1440×13 层,多变量,ERA5 当真值。</li>
+    <li><b>五个难</b>:规模巨大(52万 token)、多层三维耦合、多变量异质、长程依赖、球面几何+物理一致性。</li>
+    <li><b>I/O 规格</b>:输入 72 = 4 地表 + 3 常量掩膜 + 5×13 高空;输出 4 地表 + 5×13 高空 = 69 通道(掩膜不预测)。学生必须逐通道对齐,复用官方 stem/head。</li>
+    <li><b>架构</b>:3D Earth-Specific Transformer,U 形 <b>2-6-6-2</b>,主干 12 块跑在下采样后的 1/4 token 上 + skip 跳连保细节。</li>
+    <li><b>三个精髓</b>:3D 窗口注意力、Earth-specific 位置偏置、把大气当 3D。学生要"保结构、换贵的注意力、简化偏置"。</li>
+    <li><b>贵在哪</b>:真参数才 64.22M(257MB),显存/时长瓶颈在"52万 token×深层窗口注意力"。学生省 U/V 的杠杆是更狠下采样 + 更便宜的全局注意力 + 释放激活。</li>
+  </ol>
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin:44px 0 0;padding:14px 18px;background:#f6f8fa;border:1px solid #e7e9ec;border-radius:12px;font-size:14px;flex-wrap:wrap">
+  <a href="L1_开篇_UVW打分与全局蓝图.html" style="color:#3b444e;text-decoration:none">← L1 开篇</a>
+  <a href="00_课程总览.html" style="color:#1d6fb8;text-decoration:none;font-weight:700">🏠 课程总览</a>
+  <a href="L3_学生骨架_MaxViT3D_U形多尺度.html" style="color:#3b444e;text-decoration:none">L3 学生骨架 →</a>
+</div>
+
+<div class="foot">
+  <p>先导杯 · 气象大模型轻量化 · 各模块升级优化 10 讲 —— <b>L2 教师解剖:Pangu 与气象场特性</b></p>
+  <p><b>下一课 L3《学生骨架:MaxViT-3D U 形多尺度》</b>:基于本课对教师的理解,设计学生的骨架——为什么选 MaxViT-3D、U 形下采样怎么把算力放到 1/4 token、grid 等距稀疏全局注意力为什么对 DCU 友好又能覆盖长程依赖。</p>
+</div>
+
+</div>
+</body>
+</html>

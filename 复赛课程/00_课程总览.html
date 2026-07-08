@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>先导杯复赛备战 · 盘古气象大模型轻量化与海光 DCU 部署 · 课程总览</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --muted:#3a352f; --faint:#5a5248; --line:#e0d8c8;
+    --paper:#ffffff; --paper2:#f7f5f0; --bg:#faf8f3;
+    --accent:#8a4f2d; --accent-soft:#f3ebe2; --accent-line:#dcc9b5;
+    --blue:#1c5f7a; --blue-soft:#eaf3f7; --blue-line:#bcd9e6;
+    --green:#2e6b3e; --green-soft:#ecf6ee; --green-line:#bfe0c6;
+    --amber:#8a5a10; --amber-soft:#fbf2df; --amber-line:#ecd7a8;
+    --red:#9a2f22; --red-soft:#fbeae6; --red-line:#ecc3b8;
+    --indigo:#473c78; --indigo-soft:#eeebf6; --indigo-line:#cdc5e6;
+    --code-bg:#f7f5f0;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:"Noto Serif SC","Songti SC",Georgia,"Microsoft YaHei",serif;
+        font-size:17px; line-height:1.9; -webkit-font-smoothing:antialiased; }
+  .layout{ display:flex; max-width:1260px; margin:0 auto; }
+  nav{ position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
+       width:288px; min-width:288px; padding:30px 18px 60px; background:var(--paper);
+       border-right:1px solid var(--line); font-size:14px; font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  nav .navtitle{ font-weight:800; font-size:15.5px; color:var(--accent); margin-bottom:2px; }
+  nav .navsub{ color:var(--faint); font-size:12px; margin-bottom:16px; }
+  nav a{ display:block; color:var(--muted); text-decoration:none; padding:3px 10px; border-radius:7px; border-left:2px solid transparent; }
+  nav a:hover{ background:var(--accent-soft); color:var(--accent); }
+  nav a.chap{ font-weight:700; color:var(--ink); margin-top:13px; }
+  nav a.sub{ padding-left:22px; font-size:12.5px; color:var(--faint); }
+  main{ flex:1; min-width:0; padding:46px 56px 120px; background:var(--paper); }
+  @media (max-width:1000px){ nav{ display:none; } main{ padding:30px 20px 70px; } body{ font-size:16.5px; } }
+  header.doc{ border-bottom:2px solid var(--accent-line); padding-bottom:24px; margin-bottom:8px; }
+  header.doc .kicker{ display:inline-block; background:var(--accent); color:#fff; font-size:12.5px;
+       font-weight:700; letter-spacing:1px; padding:4px 13px; border-radius:20px; font-family:sans-serif; }
+  header.doc h1{ font-size:33px; line-height:1.32; margin:16px 0 10px; letter-spacing:.3px; }
+  header.doc .lead{ color:var(--muted); font-size:17.5px; max-width:830px; }
+  header.doc .how{ margin-top:18px; background:var(--paper2); border:1px solid var(--line);
+       border-radius:12px; padding:14px 18px; font-size:15px; color:var(--muted); }
+  h2.chap{ font-size:26px; margin:56px 0 6px; padding-top:18px; border-top:1px dashed var(--line); letter-spacing:.3px; }
+  h2.chap .cn{ display:inline-block; background:var(--accent); color:#fff; font-size:16px; font-weight:800;
+       min-width:38px; height:38px; line-height:38px; text-align:center; border-radius:10px; margin-right:12px; vertical-align:middle; padding:0 7px; }
+  .chap-intro{ color:var(--muted); font-size:16px; margin:8px 0 4px; }
+  h3{ font-size:20px; margin:34px 0 8px; color:var(--ink); }
+  h4{ font-size:17px; margin:22px 0 6px; color:var(--accent); }
+  p{ margin:11px 0; } strong{ color:var(--ink); font-weight:700; }
+  em{ font-style:normal; color:var(--amber); font-weight:700; }
+  ul,ol{ margin:11px 0; padding-left:25px; } li{ margin:6px 0; }
+  code{ font-family:"JetBrains Mono","Fira Code",Consolas,monospace; font-size:.86em;
+        background:#f0ebdd; color:#7a4520; padding:2px 6px; border-radius:5px; }
+  .box{ border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:10px;
+        padding:13px 18px; margin:16px 0; background:var(--paper); }
+  .box.g{ border-left-color:var(--green); background:var(--green-soft); }
+  .box.r{ border-left-color:var(--red); background:var(--red-soft); }
+  .box.a{ border-left-color:var(--amber); background:var(--amber-soft); }
+  .box.b{ border-left-color:var(--blue); background:var(--blue-soft); }
+  .box.ig{ border-left-color:var(--indigo); background:var(--indigo-soft); }
+  .box .h{ font-weight:800; margin-bottom:4px; font-size:15px; color:var(--accent); }
+  .box.g .h{ color:var(--green); } .box.r .h{ color:var(--red); } .box.a .h{ color:var(--amber); }
+  .box.b .h{ color:var(--blue); } .box.ig .h{ color:var(--indigo); }
+  .box p{ margin:6px 0; }
+  /* 课时卡片 */
+  .lesson{ border:1px solid var(--line); border-radius:12px; padding:0; margin:18px 0;
+           background:var(--paper); overflow:hidden; box-shadow:0 2px 8px rgba(120,90,50,.05); }
+  .lesson .top{ display:flex; align-items:center; gap:12px; padding:13px 18px;
+                background:var(--paper2); border-bottom:1px solid var(--line); }
+  .lesson .no{ flex:none; width:46px; height:46px; border-radius:10px; background:var(--accent);
+               color:#fff; font-weight:800; font-size:17px; display:flex; align-items:center; justify-content:center; font-family:sans-serif; }
+  .lesson .tt{ flex:1; min-width:0; }
+  .lesson .tt .name{ font-weight:800; font-size:17.5px; color:var(--ink); }
+  .lesson .tt .file{ font-size:12.5px; color:var(--faint); font-family:"JetBrains Mono",monospace; margin-top:2px; }
+  .lesson .dur{ flex:none; font-size:13px; color:var(--accent); font-weight:700; background:var(--accent-soft);
+                border:1px solid var(--accent-line); border-radius:20px; padding:3px 12px; font-family:sans-serif; white-space:nowrap; }
+  .lesson .body{ padding:14px 20px 16px; }
+  .lesson .goal{ background:var(--blue-soft); border:1px solid var(--blue-line); border-radius:8px;
+                 padding:9px 13px; margin:0 0 12px; font-size:15px; }
+  .lesson .goal b{ color:var(--blue); }
+  .lesson .kp{ margin:6px 0 0; }
+  .lesson .kp .lbl{ font-weight:800; color:var(--accent); font-size:13.5px; font-family:sans-serif; letter-spacing:.5px; }
+  .lesson ul{ margin:5px 0 0; }
+  .pill{ display:inline-block; font-size:12px; font-family:sans-serif; padding:2px 9px; border-radius:14px;
+         margin:2px 4px 2px 0; border:1px solid var(--line); background:var(--paper2); color:var(--muted); }
+  .pill.code{ background:var(--green-soft); border-color:var(--green-line); color:var(--green); }
+  .pill.cmd{ background:var(--amber-soft); border-color:var(--amber-line); color:var(--amber); }
+  .pill.diag{ background:var(--indigo-soft); border-color:var(--indigo-line); color:var(--indigo); }
+  .pill.trap{ background:var(--red-soft); border-color:var(--red-line); color:var(--red); }
+  .modnote{ color:var(--muted); font-size:15.5px; margin:6px 0 16px; }
+  table{ border-collapse:collapse; width:100%; margin:16px 0; font-size:15px; font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  th,td{ border:1px solid var(--line); padding:8px 12px; text-align:left; vertical-align:top; }
+  th{ background:var(--paper2); color:var(--accent); font-weight:700; }
+  tr:nth-child(even) td{ background:#fbf8f0; }
+  .diagram{ font-family:"JetBrains Mono",monospace; font-size:13px; background:var(--paper2);
+            border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin:14px 0; line-height:1.85; overflow-x:auto; white-space:pre; color:#43392e; }
+  .hl{ background:#fbeec4; padding:0 4px; border-radius:4px; font-weight:700; }
+  .legend{ display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 4px; }
+  footer{ margin-top:60px; padding-top:22px; border-top:2px solid var(--accent-line); color:var(--muted); font-size:14px; }
+  .backtop{ display:inline-block; font-size:12.5px; color:var(--faint); text-decoration:none; float:right; margin-top:6px; font-family:sans-serif; }
+  @media print{
+    nav{ display:none; } main{ padding:0; } body{ background:#fff; font-size:12pt; }
+    .lesson{ break-inside:avoid; box-shadow:none; } .box{ break-inside:avoid; }
+    h2.chap{ break-before:auto; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav>
+  <div class="navtitle">复赛备战课程</div>
+  <div class="navsub">总览 · 课程路线大纲</div>
+  <a href="#intro">开篇 · 这套课要把你练成什么样</a>
+  <a href="#why">为什么这样排课</a>
+  <a href="#map">课程地图(一张图看全)</a>
+  <a href="#legend">课时卡片图例</a>
+  <a href="#m1" class="chap">模块一 · 推理框架入门(大白话)</a>
+  <a href="#l1" class="sub">L1 深度学习推理是什么</a>
+  <a href="#l2" class="sub">L2 推理框架与算子</a>
+  <a href="#l3" class="sub">L3 为什么要优化 · 显存与时延</a>
+  <a href="#l4" class="sub">L4 ONNX 与图优化</a>
+  <a href="#m2" class="chap">模块二 · C++/HIP 编程(从零)</a>
+  <a href="#l5" class="sub">L5 C++ 够用基础</a>
+  <a href="#l6" class="sub">L6 GPU 编程模型</a>
+  <a href="#l7" class="sub">L7 HIP 是什么 · 第一个 kernel</a>
+  <a href="#l8" class="sub">L8 hipBLAS 与库调用</a>
+  <a href="#l9" class="sub">L9 进阶 · flash/GEMM 分块</a>
+  <a href="#l10" class="sub">L10 矩阵核 v_mmac · 反汇编</a>
+  <a href="#m3" class="chap">模块三 · 环境与命令行</a>
+  <a href="#l11" class="sub">L11 命令行与远程基本功</a>
+  <a href="#l12" class="sub">L12 SCNet 二跳进容器</a>
+  <a href="#l13" class="sub">L13 abc66/funhpc 与 conda</a>
+  <a href="#l14" class="sub">L14 编译/监控/后台与坑</a>
+  <a href="#m4" class="chap">模块四 · 项目实战方法论</a>
+  <a href="#l15" class="sub">L15 盘古轻量化全流程</a>
+  <a href="#l16" class="sub">L16 蒸馏训练实操</a>
+  <a href="#l17" class="sub">L17 量化与显存优化</a>
+  <a href="#l18" class="sub">L18 时延优化与评测打分</a>
+  <a href="#l19" class="sub">L19 ★换方向一天适配方法论</a>
+  <a href="#l20" class="sub">L20 决赛沙盘综合演练</a>
+  <a href="#time" class="chap">课时与时间安排</a>
+  <a href="#refs" class="chap">配套素材与代码索引</a>
+</nav>
+
+<main>
+
+<header class="doc" id="top">
+  <span class="kicker">先导杯 AI4S 复赛备战 · 课程路线大纲(请先审阅)</span>
+  <h1>从零到独立实战:盘古气象大模型轻量化<br>与海光 DCU 推理部署</h1>
+  <p class="lead">这是一份<strong>课程规划文档</strong>,不是课程本身。它把你为先导杯决赛要掌握的全部技术栈,拆成 <strong>4 个模块、20 个课时</strong>,从"深度学习推理是什么"这种最底层概念起步,一路递进到"决赛换方向、只给一天、不靠大模型,自己把分打上去"。请先看这条路线是否合适,确认后我再逐课做成 HTML 讲义。</p>
+  <div class="how">
+    <strong>怎么读这份大纲:</strong>每个课时是一张卡片,含<span style="color:var(--blue);font-weight:700">学习目标</span>、知识点清单、时长。卡片右上角的彩色标签表示这一课<span style="color:var(--green);font-weight:700">有代码示例</span>、<span style="color:var(--amber);font-weight:700">有命令行实操</span>、<span style="color:var(--indigo);font-weight:700">有诊断/方法论</span>、<span style="color:var(--red);font-weight:700">有踩坑提醒</span>。先看"课程地图"建立全局,再逐模块看细节。
+  </div>
+</header>
+
+<h2 class="chap" id="intro" style="border-top:none; margin-top:28px;"><span class="cn">读</span>开篇:这套课要把你练成什么样</h2>
+<p>复赛(决赛)的设定是:<span class="hl">换一个方向、稍微提高要求、只给你一天时间适配,而且不能依赖大模型,要你自己独立完成。</span>这意味着你不能只"会按步骤跑通本次的脚本",而要真正理解<strong>每一步为什么这么做、卡住了去哪查、换了题目怎么迁移</strong>。这套课的终点不是"看懂",而是"换个题你也能在一天里自己把分打上去"。</p>
+
+<div class="box ig">
+  <div class="h">学完这 20 课,你应当能独立做到</div>
+  <ul style="margin-top:4px;">
+    <li>看懂一个深度学习模型的推理过程,说清它<strong>慢在哪、占显存在哪</strong>(memory-bound 还是 compute-bound)。</li>
+    <li>从零写一个 HIP kernel,用 <code>hipcc</code> 编译、在海光 DCU 上跑起来,并会调 <code>hipBLAS</code> 做矩阵乘。</li>
+    <li>独立完成 <strong>SCNet 二跳登录 → 找计算节点 → 进容器</strong> 的全套操作,会用 <code>squeue</code> / <code>hy-smi</code> / <code>nohup</code> / <code>tmux</code>,踩坑能自救。</li>
+    <li>把一个大模型做<strong>蒸馏 → 量化 → kernel/显存/时延优化 → 评测打分</strong>的完整流水线。</li>
+    <li>面对<strong>陌生新题</strong>:先跑通官方 baseline、用评测定位瓶颈落在 U/V/W 哪一项,再针对性优化、快速迭代提交。</li>
+  </ul>
+</div>
+
+<div class="box a">
+  <div class="h">本项目的"三分制"是贯穿全课的指挥棒</div>
+  <p>先导杯赛题二总分 100,拆成三块,记住它们,后面每一课都围着它转:</p>
+  <ul style="margin:4px 0 0;">
+    <li><strong>W · 预测性能(精度,约 40 分)</strong>——预报场对真值 ERA5 的纬度加权 RMSE/ACC,不能比教师差太多(达标线 RMSE ≤ 1.3× 教师)。</li>
+    <li><strong>U · 轻量化(参数+显存,约 40 分)</strong>——参数量较教师下降(达标线 ↓70%),以及实测推理峰值显存。</li>
+    <li><strong>V · 推理时延(约 20 分)</strong>——海光 DCU 上单步推理时长越短越好。</li>
+  </ul>
+  <p style="margin-top:6px;">本次成绩参照(让你知道"好"长什么样):教师 Pangu 64M / RMSE 1.00× / 单步 331ms;最优学生约 4.46–5.83M(教师 7–9%)/ 1.05–1.14× / DCU 手写 HIP 17–18ms。<strong>这就是要复现并迁移的能力。</strong></p>
+</div>
+
+<h2 class="chap" id="why"><span class="cn">读</span>为什么这样排课<a href="#top" class="backtop">↑ 回顶部</a></h2>
+<p>四个模块是<strong>"先懂概念 → 再会写底层 → 再能操作机器 → 最后串成实战并能迁移"</strong>的递进。每一层都为下一层铺垫,不跳级:</p>
+<div class="diagram">  模块一  概念层   "这东西是什么、为什么要优化"      ──┐  没有这层, 后面全是黑箱照抄
+  模块二  能力层   "我能自己写 C++/HIP kernel 跑起来"  ──┤  这是 V 分(时延)与⑤⑥手写核的硬本钱
+  模块三  操作层   "我能登上机器、编译、训练、不掉线"   ──┤  没有这层, 再好的方法也落不了地
+  模块四  实战层   "把一切串成流水线 + 换题一天适配"   ──┘  ★决赛真正考的就是这一层</div>
+<p>排课刻意做了两件事保证"从零也能学":① 模块一、二的前几课用<strong>大白话 + 打比方</strong>,假设你编程/GPU 基础有限;② 每个抽象概念都尽快落到<strong>本项目的真实代码与真实命令</strong>上,不停留在纸面。</p>
+
+<h2 class="chap" id="map"><span class="cn">图</span>课程地图(一张图看全)<a href="#top" class="backtop">↑ 回顶部</a></h2>
+<div class="diagram">┌─────────────────────────────────────────────────────────────────────┐
+│ 模块一 · 推理框架入门(大白话)                          约 3.5 h     │
+│   L1 推理是什么 → L2 框架与算子 → L3 为何优化(显存/时延) → L4 ONNX   │
+├─────────────────────────────────────────────────────────────────────┤
+│ 模块二 · C++/HIP 编程(从零)                            约 7.5 h     │
+│   L5 C++基础 → L6 GPU模型(thread/block/wave64) → L7 第一个HIP核      │
+│   → L8 hipBLAS → L9 flash/GEMM分块 → L10 矩阵核 v_mmac+反汇编        │
+├─────────────────────────────────────────────────────────────────────┤
+│ 模块三 · 环境与命令行(能自己操作机器)                  约 4.5 h     │
+│   L11 命令行/ssh/scp → L12 SCNet二跳进容器 → L13 abc66/conda          │
+│   → L14 编译/hy-smi/nohup/tmux + 常见坑                              │
+├─────────────────────────────────────────────────────────────────────┤
+│ 模块四 · 项目实战方法论(决赛能直接用)                  约 8 h       │
+│   L15 全流程总览 → L16 蒸馏训练 → L17 量化+显存 → L18 时延+评测        │
+│   → L19 ★换方向一天适配 SOP → L20 决赛沙盘综合演练                   │
+└─────────────────────────────────────────────────────────────────────┘
+              合计 20 课时 · 约 23.5 学时 · 建议 7–10 天学完</div>
+
+<h2 class="chap" id="legend"><span class="cn">注</span>课时卡片图例<a href="#top" class="backtop">↑ 回顶部</a></h2>
+<div class="legend">
+  <span class="pill code">含代码示例</span>
+  <span class="pill cmd">含命令行实操</span>
+  <span class="pill diag">含诊断/方法论</span>
+  <span class="pill trap">含踩坑提醒</span>
+  <span class="pill">纯概念讲解</span>
+</div>
+<p class="modnote">每张卡片给出:课时编号与标题、计划生成的 HTML 文件名、<span style="color:var(--blue);font-weight:700">学习目标(学完能做什么)</span>、知识点清单、时长。下面按模块逐课列出。</p>
+
+<!-- ===================== 模块一 ===================== -->
+<h2 class="chap" id="m1"><span class="cn">一</span>模块一 · 推理框架入门(大白话)<a href="#top" class="backtop">↑ 回顶部</a></h2>
+<p class="chap-intro">目标:把"模型推理 / 框架 / 算子 / 优化 / ONNX"这些词彻底讲明白,让你之后看任何优化都知道"它在优化哪一环、为什么有用"。这一模块不写底层代码,重在建立<strong>正确的脑内模型</strong>。</p>
+
+<div class="lesson" id="l1">
+  <div class="top"><div class="no">L1</div>
+    <div class="tt"><div class="name">深度学习推理到底是什么</div><div class="file">01_推理是什么.html</div></div>
+    <div class="dur">45 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>用自己的话讲清"训练 vs 推理"的区别,说出一次推理在干什么(一堆矩阵乘 + 激活),以及"前向传播"为什么是一串算子。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>训练(学权重,要反向传播+优化器)vs 推理(权重固定,只走前向)——本项目你部署的就是推理。</li>
+        <li>一次前向 = 一连串"层"(卷积/注意力/归一化/全连接),每层本质是<strong>矩阵运算 + 非线性</strong>。</li>
+        <li>张量(tensor)是什么:多维数组;形状(shape)/数据类型(dtype: fp32/fp16)。</li>
+        <li>以盘古为例:输入气象网格 → 一串层 → 输出未来气象网格,中间没有"思考",只有算。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill">纯概念讲解</span><span class="pill diag">含诊断/方法论</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l2">
+  <div class="top"><div class="no">L2</div>
+    <div class="tt"><div class="name">推理框架与"算子"概念(PyTorch eager vs 部署优化)</div><div class="file">02_框架与算子.html</div></div>
+    <div class="dur">50 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>解释什么是算子(operator)、什么是推理框架,以及"PyTorch 一边算一边调度(eager)"为什么没榨干硬件、部署框架做了哪些事。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li><strong>算子 operator</strong>:框架里的"一种运算单元"(MatMul/Conv/Softmax/LayerNorm…),模型 = 算子搭起来的计算图。</li>
+        <li><strong>PyTorch eager 模式</strong>:写一行算一行,灵活但每个算子单独启动、中间结果反复进出显存——慢。</li>
+        <li><strong>部署/推理框架</strong>(TensorRT / 海光 MIGraphX)做什么:图优化、算子融合、选最快的 kernel、固定形状提速。</li>
+        <li>"同一个模型,换个跑法能快好几倍"——这就是 V 分(时延)的全部来源,埋下后面手写 kernel 替换慢算子的伏笔。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill">纯概念讲解</span><span class="pill diag">含诊断/方法论</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l3">
+  <div class="top"><div class="no">L3</div>
+    <div class="tt"><div class="name">为什么要优化:显存约束与时延约束</div><div class="file">03_为何优化_显存与时延.html</div></div>
+    <div class="dur">50 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>区分"显存瓶颈"和"时延瓶颈",理解 memory-bound vs compute-bound 这条贯穿全课的判优铁律,知道优化前必须先定位瓶颈。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>显存放什么:权重 + 激活(中间结果)。反直觉关键:本项目<strong>激活占 99%、权重仅 1%</strong>(单样本峰值约 1GB 里激活 1056MB)。</li>
+        <li>时延从哪来:算得慢(compute-bound)还是搬数据慢(memory-bound)。<strong>Roofline / 算术强度</strong>大白话版。</li>
+        <li>盘古学生的特点:<span class="hl">参数小(几 M)、激活巨(全分辨率 13 万 token)→ 大部分模块是访存受限</span>(与 LLM 相反),所以主战场是访存不是算力。</li>
+        <li>判优铁律:先定位瓶颈方向再动手,方向错了白干;任何"X 比 Y 快"必须在目标硬件实测。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill diag">含诊断/方法论</span><span class="pill">纯概念讲解</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l4">
+  <div class="top"><div class="no">L4</div>
+    <div class="tt"><div class="name">ONNX 与图优化:模型怎么从训练框架走向部署</div><div class="file">04_ONNX与图优化.html</div></div>
+    <div class="dur">45 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>说清 ONNX 是什么(模型的通用中间表示),会描述"PyTorch → ONNX → 推理引擎"链路,知道导出常见坑。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>ONNX = 跨框架的"模型交换格式",把网络存成一张标准计算图,供 TensorRT/MIGraphX/onnxruntime 加载。</li>
+        <li>导出实操心智:<code>torch.onnx.export(opset17)</code>;FP16 转换(<code>convert_float_to_float16</code>)体积/显存减半。</li>
+        <li>本项目真实坑(讲案例):自定义算子可导;<code>Transpose</code> 负索引 onnxruntime 不接受要改正索引;部分算子回退导致没到理论减半。</li>
+        <li>重要清醒认识:onnxruntime CUDA 上 200ms 远慢于 PyTorch eager 20ms,<strong>真值要在 DCU + MIGraphX 上测</strong>——埋下"别照搬别人硬件结论"。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill code">含代码示例</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<!-- ===================== 模块二 ===================== -->
+<h2 class="chap" id="m2"><span class="cn">二</span>模块二 · C++/HIP 编程(从零)<a href="#top" class="backtop">↑ 回顶部</a></h2>
+<p class="chap-intro">目标:让一个 GPU 编程零基础的人,能从"C++ 够用语法"一路写到"在海光 DCU 上跑通自己的 HIP kernel、调 hipBLAS、看懂 flash/GEMM 分块,甚至读机器码用上矩阵核"。这是本项目 V 分与⑤⑥手写核的硬本钱,是整套课最厚的一块。</p>
+
+<div class="lesson" id="l5">
+  <div class="top"><div class="no">L5</div>
+    <div class="tt"><div class="name">C++ 够用基础(只学写 kernel 用得上的)</div><div class="file">05_Cpp够用基础.html</div></div>
+    <div class="dur">70 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>读写一段 C++:变量/指针/数组/函数/for 循环/结构体,理解"指针就是地址",会用 <code>g++</code> 编译运行一个小程序。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>基本类型(int/float/double/half)与为什么 GPU 上 fp16/fp32 很重要。</li>
+        <li>指针与数组:<code>float* p</code>、<code>p[i]</code> 与 <code>*(p+i)</code>、连续内存——这是后面"合并访存"的物理基础。</li>
+        <li>函数、头文件 include、编译/链接概念;<code>extern "C"</code> 为什么后面要用(给 Python ctypes 调)。</li>
+        <li>只讲项目要用的子集,不展开 OOP/模板等;给"看懂即可"和"会改"两档目标。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill code">含代码示例</span><span class="pill cmd">含命令行实操</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l6">
+  <div class="top"><div class="no">L6</div>
+    <div class="tt"><div class="name">GPU 编程模型:thread / block / grid / wave / SIMD</div><div class="file">06_GPU编程模型.html</div></div>
+    <div class="dur">70 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>画出 thread→block→grid 的层级,说清 GPU 为什么快(几千核并行)、SIMD/wave 是什么,并牢记<strong>海光 wavefront=64(不是 NVIDIA 的 32)</strong>。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>CPU(几个全才)vs GPU(几千个专才)的直觉;能拆成几千份一样的活 → GPU。</li>
+        <li>线程层级:thread / block / grid;全局编号 <code>i = blockIdx.x*blockDim.x + threadIdx.x</code>;"要协作的放同一 block"。</li>
+        <li>SIMD / SIMT / wavefront:一条指令一束线程同时做;<span class="hl">海光 DCU wave=64(NVIDIA warp=32),block size 取 64 的倍数</span>。</li>
+        <li>内存层级:寄存器 < LDS(共享内存,DCU 约 64KB/CU)< L2(8MB)< HBM;合并访存、bank conflict 的直觉。</li>
+        <li>DCU 硬件画像:gfx936 / 80 CU / wave64 / 64GB HBM / triad 实测带宽约 1062–1357 GB/s——后面所有 kernel 的"标尺"。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill diag">含诊断/方法论</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l7">
+  <div class="top"><div class="no">L7</div>
+    <div class="tt"><div class="name">HIP 是什么 · 写第一个 kernel(向量加)并编译运行</div><div class="file">07_HIP与第一个核.html</div></div>
+    <div class="dur">80 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>独立写出向量加 HIP kernel,用 <code>hipcc --offload-arch=gfx936</code> 编译,在 DCU 上跑出正确结果,理解 host/device 内存拷贝与 kernel 启动语法。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>HIP 是什么:对标 CUDA 的跨平台 GPU 编程接口,海光 DCU 用 HIP;<code>nvcc→hipcc、cuBLAS→hipBLAS、cudaMalloc→hipMalloc</code> 几乎一一对应。</li>
+        <li>第一个核:<code>__global__</code> 函数、<code>hipMalloc/hipMemcpy</code>、<code>kernel&lt;&lt;&lt;grid,block&gt;&gt;&gt;()</code>、<code>hipDeviceSynchronize</code>、错误检查宏。</li>
+        <li>编译运行:<code>hipcc -O3 vadd.hip -o vadd --offload-arch=gfx936 &amp;&amp; ./vadd</code>;在 SCNet 宿主机直接能编(不必进容器)。</li>
+        <li>把核编成动态库 <code>.so</code> + <code>extern "C"</code> launcher,PyTorch 用 <strong>ctypes 传 <code>tensor.data_ptr()</code></strong> 调用——本项目集成方式。</li>
+        <li>DCU 偏好(实测心法):海量简单独立线程常胜过 wavefront 协作 + shfl(后者开销大)。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill code">含代码示例</span><span class="pill cmd">含命令行实操</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l8">
+  <div class="top"><div class="no">L8</div>
+    <div class="tt"><div class="name">hipBLAS / rocBLAS 库调用:别什么都自己写</div><div class="file">08_hipBLAS库调用.html</div></div>
+    <div class="dur">55 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>用 hipBLAS/rocBLAS 做一个矩阵乘(GEMM),理解"成熟库已近最优,什么该自己写、什么该交给库"的边界。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>GEMM 是什么、为什么是深度学习的核心(qkv/proj/FFN 全是 GEMM);行主序/列主序与转置参数坑。</li>
+        <li>调用 rocBLAS 跑一次 fp16 GEMM + fp32 累加;混合精度的意义。</li>
+        <li>边界判断(本项目结论):<strong>qkv/proj/SwiGLU 的 GEMM 用 rocBLAS 保留,手写打不过;真正值得自己写的是被框架"没优化好"的算子</strong>(如 DCU 上的 SDPA、ConvTranspose3d)。</li>
+        <li>tall-skinny GEMM(K 很小如 K=96)是访存/launch-bound,不是算力-bound——解释了为什么硬融合不划算。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill code">含代码示例</span><span class="pill diag">含诊断/方法论</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l9">
+  <div class="top"><div class="no">L9</div>
+    <div class="tt"><div class="name">进阶 kernel:flash 注意力思想 + GEMM 分块 tiling</div><div class="file">09_进阶_flash与分块.html</div></div>
+    <div class="dur">85 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>讲清 flash attention 的核心(不物化 N×N、在线 softmax、tiling 进 LDS),看懂本项目手写 flash 窗口注意力核,理解它为何在 DCU 上 5.3× 快过 PyTorch SDPA。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>标准注意力为什么慢/费显存:中间 N×N 分数矩阵反复进出 HBM。</li>
+        <li>flash 三招:tiling(Q/K/V 切块进 LDS)+ online softmax(只维护跑动 max/sum/输出)+ 绝不物化大矩阵。</li>
+        <li>GEMM 分块 tiling:把热数据搬进 LDS/寄存器反复用,减少 HBM 往返;合并访存 + 避免 bank conflict。</li>
+        <li>本项目实战拆解:窗口自注意力 144 token、6 头、含 QK-Norm + 相对位置偏置;<strong>1 线程 = 1 query 行,分数只在寄存器里活一瞬;v1=2.19ms,wavefront 协作版反而慢 4.4×</strong>(再次印证 DCU 偏好独立线程)。</li>
+        <li>算子融合思想:把 RMSNorm/partition 折进大核,消除小算子 launch 开销。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill code">含代码示例</span><span class="pill diag">含诊断/方法论</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l10">
+  <div class="top"><div class="no">L10</div>
+    <div class="tt"><div class="name">矩阵核指令 v_mmac + 反汇编看机器码(选学高阶)</div><div class="file">10_矩阵核与反汇编.html</div></div>
+    <div class="dur">75 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>理解什么是矩阵核(对标 NVIDIA Tensor Core),知道 <strong>gfx936 用 v_mmac 而非 AMD 的 v_mfma</strong>,看懂"反汇编 + 逆向 fragment 布局 + 手写矩阵核 GEMM 替 rocBLAS"这条破解路线的逻辑。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>矩阵核是什么:一条指令做 16×16×16 矩阵乘加,比标量快一个量级;NVIDIA=Tensor Core(mma)、AMD=MFMA(v_mfma)。</li>
+        <li>本项目独有发现:<span class="hl">海光 gfx936 的矩阵核指令是 <code>v_mmac</code>(<code>__builtin_amdgcn_mmac_f32_16x16x16f16</code>),不是 AMD 的 v_mfma</span>——照搬 AMD 代码会失败。</li>
+        <li>怎么破解的方法论:反汇编看机器码(<code>isa_probe</code> / GCN decode)→ 用"A=单位阵/B=数据"双向锚定<strong>逆向出 fragment 寄存器布局</strong>(lane→(行,列)映射)→ 自己写 <code>libgemm_mmac.so</code> 替 rocBLAS,省约 121MiB 显存。</li>
+        <li>定位:这是"当通用库不够用/不省显存时,下探到硬件指令层自救"的极致案例,标注为<strong>选学</strong>,理解思路即可,决赛不一定用到但代表能力上限。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill code">含代码示例</span><span class="pill diag">含诊断/方法论</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<!-- ===================== 模块三 ===================== -->
+<h2 class="chap" id="m3"><span class="cn">三</span>模块三 · 环境配置与命令行(能自己操作机器)<a href="#top" class="backtop">↑ 回顶部</a></h2>
+<p class="chap-intro">目标:让你不靠任何人,自己登上每一台机器、配好环境、编译训练、长时间不掉线、出问题能自救。这一模块全是<strong>可照做的命令</strong>,是"方法再好也得能落地"的那一层。</p>
+
+<div class="lesson" id="l11">
+  <div class="top"><div class="no">L11</div>
+    <div class="tt"><div class="name">命令行与远程基本功(Linux + ssh + scp)</div><div class="file">11_命令行与远程基本功.html</div></div>
+    <div class="dur">60 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>用基础 Linux 命令在服务器上自由移动/查看/编辑文件,用 ssh 登录、scp 传文件、看路径与权限,能从 Windows 把代码传上去。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>必备命令:<code>ls/cd/pwd/cat/less/find/grep/cp/mv/rm/du/df/chmod</code>;绝对路径 vs 相对路径。</li>
+        <li>ssh 登录、ssh 端口与跳板概念;<code>scp</code> / <code>rsync</code> 传文件;密钥 vs 密码登录。</li>
+        <li>Windows → 服务器:本项目用 <code>_xxx.py put/get</code> 助手(paramiko)传文件的实际套路。</li>
+        <li>编辑器:vim/nano 最小集;<strong>复杂操作写成 <code>.sh</code> 脚本上传执行,别在命令行硬拼</strong>(PowerShell 会吃掉 <code>$()</code>/管道)。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill cmd">含命令行实操</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l12">
+  <div class="top"><div class="no">L12</div>
+    <div class="tt"><div class="name">SCNet 海光 DCU 平台:二跳登录 → 找节点 → 进容器</div><div class="file">12_SCNet二跳进容器.html</div></div>
+    <div class="dur">75 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>独立完成"登录节点 → squeue 找计算节点 → ssh 到宿主机 → 进容器"的全套操作,会在宿主机直接编 HIP、在容器里跑 torch/onescience。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>SCNet 拓扑:登录节点 <code>zzeshell</code>(只能到这)→ <code>squeue</code> 查作业所在<strong>计算节点</strong> → <code>ssh</code> 到该宿主机。</li>
+        <li>宿主机能干什么:属 <code>video</code> 组、<code>hy-smi</code> 看 DCU、<code>/opt/dtk-*/bin/hipcc</code> 直接编 HIP,<strong>不进容器</strong>就能 <code>hipcc x.hip -o x &amp;&amp; ./x</code>。</li>
+        <li>进容器:裸 <code>docker</code> 被拒(无 docker 组),正确入口 <code>sudo /usr/bin/ai_docker exec -i &lt;容器名&gt; bash -l</code>;容器内 torch2.5.1 + hip6.3 + onescience。</li>
+        <li>文件经 <code>/public</code>(NFS,宿主机/容器都见)互通;DTK 版本(25.04.x / ROCm 6.3)与 device name "BW"。</li>
+        <li>连接防限流:登录→计算节点这跳加 SSH ControlMaster 多路复用 + 噪音过滤。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill cmd">含命令行实操</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l13">
+  <div class="top"><div class="no">L13</div>
+    <div class="tt"><div class="name">训练机 abc66 / funhpc + conda 环境管理</div><div class="file">13_训练机与conda.html</div></div>
+    <div class="dur">55 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>登录 abc66(Tailscale)与 funhpc(每次新实例),激活正确 conda 环境,找到数据/教师权重/代码,知道每台机的角色分工。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>conda 基本功:<code>conda activate</code>、env 路径、为什么<strong>别 <code>pip install torch</code></strong>(会覆盖 DTK 定制版导致 DCU 调不起来)。</li>
+        <li>各机角色:funhpc/mitai = 完整数据主训机(A100/4×4090);abc66 = 预研消融(2×5090,数据少);SCNet DCU = HIP 推理 + 官方完整数据源。</li>
+        <li>关键环境变量约定:<code>PCKPT</code>(教师权重)/<code>PSTATS</code>/<code>PMETA</code>/<code>PBASE</code>(数据根)——换机只改这几个。</li>
+        <li>Tailscale 免密 <code>ssh abc66</code>;funhpc 每次重开地址/端口/密码全变要改助手头部。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill cmd">含命令行实操</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l14">
+  <div class="top"><div class="no">L14</div>
+    <div class="tt"><div class="name">编译 / 显存监控 / 后台长跑 + 常见坑大全</div><div class="file">14_编译监控后台与坑.html</div></div>
+    <div class="dur">60 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>用 <code>hipcc</code> 编译、<code>hy-smi</code>/<code>nvidia-smi</code> 看显存、<code>nohup</code>/<code>tmux</code>/<code>screen</code> 让训练在断线后继续,并能识别+绕开本项目踩过的所有典型坑。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>编译:<code>hipcc</code> 常用 flag、<code>-shared -fPIC</code> 出 <code>.so</code>;<code>g++ -O3</code>。</li>
+        <li>监控:<code>hy-smi</code>(DCU)/ <code>nvidia-smi</code> 看显存与利用率、<code>watch</code> 刷新、找谁占了卡。</li>
+        <li>后台长跑:<code>nohup &amp; </code> vs <code>tmux</code>/<code>screen</code> 的区别;<span class="hl">大坑:某些实例非交互 SSH 一关就杀光后台(nohup/setsid/disown 全失效),必须用 tmux/screen detach 才持久</span>。</li>
+        <li>坑库(逐条讲触发与自救):容器 4 小时限退要重启;磁盘/RAM 满;Windows CRLF 换行污染脚本;中文路径破坏输出;SSH 抖动/banner reset 要重试;<code>pkill -f</code> 误杀自己(脚本名含关键字)。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill cmd">含命令行实操</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<!-- ===================== 模块四 ===================== -->
+<h2 class="chap" id="m4"><span class="cn">四</span>模块四 · 项目实战方法论(决赛能直接用)<a href="#top" class="backtop">↑ 回顶部</a></h2>
+<p class="chap-intro">目标:把前三模块的零件串成完整流水线,亲手走一遍盘古轻量化全流程,并重点训练<strong>★换方向、一天适配</strong>的作战方法。这是决赛真正考的层面,也是这套课的落点。</p>
+
+<div class="lesson" id="l15">
+  <div class="top"><div class="no">L15</div>
+    <div class="tt"><div class="name">盘古轻量化全流程总览(从赛题到提交)</div><div class="file">15_全流程总览.html</div></div>
+    <div class="dur">60 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>画出"数据准备→蒸馏训练→量化→kernel/显存/时延优化→评测打分→提交"的完整流水线,并把每一步对应到 U/V/W 三分。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>赛题二全貌:教师 Pangu 64M(EarthAttention3D,输入约 72×721×1440 网格)→ 要做轻量学生 + DCU 部署。</li>
+        <li>学生架构总览:MaxViT-3D(3D PatchEmbed 把 token 压 4× → U 形 enc/mid/dec → block+grid 双注意力 → recovery 还原网格 + 守恒校正层)。</li>
+        <li>三分 ↔ 步骤映射:蒸馏定 W、参数/量化定 U、kernel/架构定 V;三者要联合最优不是各自极限。</li>
+        <li>OneScience 生态、官方 baseline 代码在哪、提交物长什么样。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill diag">含诊断/方法论</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l16">
+  <div class="top"><div class="no">L16</div>
+    <div class="tt"><div class="name">知识蒸馏训练实操(教师→学生 + 真值监督)</div><div class="file">16_蒸馏训练实操.html</div></div>
+    <div class="dur">90 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>独立配置并启动一次蒸馏训练:冻结教师、缓存教师输出、纬度加权损失、Muon/AdamW 分组优化,并会用正确口径判优(对真值 RMSE 而非只看 val_match)。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>知识蒸馏原理:教师全程冻结当稳定标签,学生学着对齐;为什么比从头训省得多。</li>
+        <li>训练 recipe(<code>distill_cache.py</code>):bf16 混合精度、教师输出 RAM 缓存、纬度加权 L1、per-channel 通道权重、EMA、grad clip、cosine LR。</li>
+        <li>Muon 优化器:2D 权重走 Muon(Newton-Schulz 正交化,lr≈0.02)、其余走 AdamW(lr≈6e-4),小模型省 30–40% step。</li>
+        <li>真值监督:除对齐教师外加 ERA5 真值,可在近地面超教师;判优铁律:<strong>必看对真值 latitude-weighted RMSE,别只看 val_match</strong>(否则选到"低 val 但模糊"伪优)。</li>
+        <li>成果链直觉:换优化器(AdamW→Muon)与加深架构两条增益正交可叠加(1.13×→1.05×)。</li>
+        <li>实操坑:补充训练一律 <code>--resume</code> 从已存权重继续,绝不从头;后台用 tmux/screen。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill code">含代码示例</span><span class="pill cmd">含命令行实操</span><span class="pill diag">含诊断/方法论</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l17">
+  <div class="top"><div class="no">L17</div>
+    <div class="tt"><div class="name">量化与显存优化(U 分的两把刀)</div><div class="file">17_量化与显存优化.html</div></div>
+    <div class="dur">75 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>对模型做 INT8/FP16 权重量化并评估精度损失,理解"量化是存储刀不是显存刀",会判断显存峰值真正卡在哪、怎么降。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>量化原理:fp32→fp16→int8;per-channel vs per-tensor;权重量化 vs 激活量化(W8A8)。</li>
+        <li>本项目结论(关键且反直觉):<strong>INT8 per-channel 近无损(+0.08%)优于 FP8;FP8 全面不如 INT8(蒸馏小模型权重分布集中)</strong>;端到端 W8A8 要配 SmoothQuant(INT8 激活 +0.67%,FP8 不吃 smooth)。</li>
+        <li>三把刀分清:<span class="hl">量化主要帮"模型大小"(11.66→7.73MB)进 U 分;不帮显存(激活占 99%);加速对小矩阵有限</span>。</li>
+        <li>显存优化:激活在哪(高分辨率 patch embed/recovery 是大头);真降峰值靠空间分块 tiling + 激活量化;<strong>负结果:Flash/SDPA 对峰值省 0%(峰值是特征图不是注意力矩阵)</strong>。</li>
+        <li>清醒判断:单样本峰值约 1GB,对 64GB 的 DCU 远非瓶颈,降显存优先级要看题目要求。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill code">含代码示例</span><span class="pill diag">含诊断/方法论</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l18">
+  <div class="top"><div class="no">L18</div>
+    <div class="tt"><div class="name">推理时延优化与评测打分(V 分 + 三项 scorecard)</div><div class="file">18_时延优化与评测.html</div></div>
+    <div class="dur">85 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>剖析模型逐模块时延、用手写 HIP 核替换慢算子拿到端到端加速,并会跑完整评测把 U/V/W 三项分数算出来、判断优化是否真有效。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>逐模块剖析:本项目实测注意力占约一半、patchrecovery3d 也是大头;先剖析再动手。</li>
+        <li>CppRunner / hip_opt 思路:<strong>把 DCU 上"没优化好"的算子(SDPA 11.4ms、ConvTranspose3d 11.9ms)用数学等价 + rocBLAS/手写核重写</strong>,各得 5–8×,端到端 133.8→55ms(2.44×),最优架构 37→17ms。</li>
+        <li>计时方法论:预热 + 多次取均值方差、<code>hipEvent</code> 计时、逐位/多阈值正确性校验;小高频算子单独 ctypes 化反被 launch 开销吃掉(要融合)。</li>
+        <li>评测打分:跑 result.py 算 W(对真值 RMSE)、U(参数+峰值显存,显存要实测不能用文件大小)、V(单步时延);<strong>权重 remap 坑(split-API vs unified-API,19 键需 remap 才能在 DCU 正确加载)</strong>。</li>
+        <li>scorecard 思维:别只看一个数,三项联合看;"X 比 Y 快"问清相对谁、什么硬件。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill code">含代码示例</span><span class="pill cmd">含命令行实操</span><span class="pill diag">含诊断/方法论</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l19">
+  <div class="top"><div class="no">L19</div>
+    <div class="tt"><div class="name">★ 决赛换方向 · 一天适配作战手册(SOP)</div><div class="file">19_换方向一天适配SOP.html</div></div>
+    <div class="dur">75 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>拿到一个<strong>陌生新方向/更高要求</strong>的题目,在一天内独立走完"跑通 baseline → 定位瓶颈在 U/V/W 哪项 → 针对性优化 → 快速迭代提交",并按性价比分配有限时间。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>第 0 步永远是<strong>先跑通官方 baseline</strong>,拿到一个能提交的分数(保底),再谈优化。</li>
+        <li>用评测<strong>定位瓶颈落在哪一项</strong>:W 差→动蒸馏/真值监督/架构;U 差→量化/减参/减峰值;V 差→换慢算子/减 token/架构。</li>
+        <li>性价比决策树(从本项目经验提炼):便宜先做的(FP16/INT8 权重量化、flash 替 SDPA、resume 续训);贵且不确定的(重训新架构、手写矩阵核)放后面或放弃。</li>
+        <li>迁移清单:新题如果换模型/换变量/换分辨率,哪些零件能直接复用、哪些要改(损失口径、权重 remap、img_size 硬编码)。</li>
+        <li><span class="hl">不靠大模型的自救法</span>:看官方 README/config、读报错 stderr、二分定位、最小复现、对照本课"坑库"。</li>
+        <li>时间盒(time-box)管理:每个尝试设上限,不陷进一个坑;留出最后提交+验证缓冲。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill diag">含诊断/方法论</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<div class="lesson" id="l20">
+  <div class="top"><div class="no">L20</div>
+    <div class="tt"><div class="name">决赛沙盘:一道模拟新题的端到端综合演练</div><div class="file">20_决赛沙盘演练.html</div></div>
+    <div class="dur">90 min</div></div>
+  <div class="body">
+    <div class="goal"><b>学完能:</b>把全部 19 课串起来,跟着一道"假想的换方向新题",从登录机器到提交分数完整走一遍,形成肌肉记忆。</div>
+    <div class="kp"><span class="lbl">知识点</span>
+      <ul>
+        <li>设定一道贴近真实的模拟题(如:换一个气象变量/收紧显存上限/提高时延要求),按 L19 的 SOP 实战。</li>
+        <li>全链路检查表:环境 → baseline → 剖析 → 各项优化 → 评测 → 提交,每步给"自检问题"。</li>
+        <li>把模块二的 HIP 能力、模块三的操作能力、模块四的方法论合在一道题里检验。</li>
+        <li>复盘:常见失分点、时间分配复盘、"如果只剩 2 小时该保哪项"。</li>
+      </ul>
+    </div>
+    <div class="legend"><span class="pill cmd">含命令行实操</span><span class="pill diag">含诊断/方法论</span><span class="pill trap">含踩坑提醒</span></div>
+  </div>
+</div>
+
+<!-- ===================== 时间 ===================== -->
+<h2 class="chap" id="time"><span class="cn">表</span>课时与时间安排<a href="#top" class="backtop">↑ 回顶部</a></h2>
+<p class="chap-intro">总计 <strong>20 课时、约 23.5 学时</strong>。下面是按模块的工时与建议节奏。可按你的实际基础压缩或拉长。</p>
+<table>
+  <tr><th>模块</th><th>课时</th><th>小计工时</th><th>建议节奏</th></tr>
+  <tr><td>一 · 推理框架入门(概念)</td><td>L1–L4(4 课)</td><td>约 3.5 h</td><td>第 1 天:打底,纯理解,不上机</td></tr>
+  <tr><td>二 · C++/HIP 编程(从零)</td><td>L5–L10(6 课)</td><td>约 7.5 h</td><td>第 2–4 天:边学边上机写核,L10 选学</td></tr>
+  <tr><td>三 · 环境与命令行</td><td>L11–L14(4 课)</td><td>约 4.5 h</td><td>第 4–5 天:全程跟着敲命令</td></tr>
+  <tr><td>四 · 项目实战方法论</td><td>L15–L20(6 课)</td><td>约 8 h</td><td>第 6–9 天:走完整流水线 + 沙盘演练</td></tr>
+  <tr><td><strong>合计</strong></td><td><strong>20 课</strong></td><td><strong>约 23.5 h</strong></td><td><strong>建议 7–10 天</strong></td></tr>
+</table>
+<div class="box b">
+  <div class="h">学法建议</div>
+  <ul style="margin-top:4px;">
+    <li>模块一可快读;真正要动手的是模块二(写核)、模块三(操作机器)、模块四(实战)。</li>
+    <li>L10(矩阵核反汇编)标注为<strong>选学高阶</strong>,理解思路即可,时间紧可跳过不影响主线。</li>
+    <li>L19/L20 是决赛核心,务必当真演练一遍,而不是只读。</li>
+  </ul>
+</div>
+
+<!-- ===================== 素材 ===================== -->
+<h2 class="chap" id="refs"><span class="cn">源</span>配套素材与代码索引(讲义将引用)<a href="#top" class="backtop">↑ 回顶部</a></h2>
+<p class="chap-intro">讲义会直接引用本机已有的真实文档与代码,保证"学的就是这次真打的东西"。主要来源:</p>
+<ul>
+  <li><strong>风格参考</strong>:<code>高性能计算课程\03_GPU二讲\</code>(GPU 入门/进阶)、各<code>讲义/讲解</code>暖纸风 HTML。</li>
+  <li><strong>知识底座</strong>:<code>高性能计算课程\_知识库总结.md</code>(CPU/GPU/LLM/kernel/AI4Science 全图)。</li>
+  <li><strong>赛题与方法</strong>:<code>气象量化竞赛文档\</code>(赛题/模型解剖/量化压缩/海光 DCU 对比 CUDA/最优方法详解)。</li>
+  <li><strong>HIP 部署</strong>:<code>DCU_HIP内核\DCU_HIP内核文档.html</code> + <code>hip\</code>(devbw/rmsnorm/attn_flash/hip_opt)。</li>
+  <li><strong>矩阵核破解</strong>:<code>cpp_stage1\</code>(gemm_mmac/mmac_probe/mmac_solve/gcn_decode/isa_probe)。</li>
+  <li><strong>训练/评测/显存代码</strong>:<code>显存优化_产出\</code>(maxvit3d_student.py / inference.py)、各机 <code>distill_cache.py / eval_mitai.py / result.py</code>。</li>
+  <li><strong>环境速查</strong>:四台服务器(funhpc/mitai/abc66/SCNet)连接 + env + 数据 + 教师权重 + 坑(将整理进模块三)。</li>
+</ul>
+
+<footer>
+  <p><strong>这是第一步交付:课程路线大纲(请审阅)。</strong>确认这条 4 模块 20 课时的路线后,我将从 L1 起逐课产出 HTML 讲义(暖纸学术风、文字优先、打印友好,含概念图解 + 代码示例 + 命令行示例),全部存放于本目录 <code>D:\python_code\清华服务器\复赛备战课程\</code>。</p>
+  <p style="color:var(--faint);font-size:13px;">先导杯 AI4S 复赛备战课程 · 总览 v1 · 盘古气象大模型轻量化与海光 DCU 部署</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

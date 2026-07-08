@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L4 · 评测逐代码 · score15_fp32.py(对真值算官方 15 指标 W + 判优)</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --muted:#3a352f; --faint:#5a5248; --line:#e0d8c8;
+    --paper:#ffffff; --paper2:#f7f5f0; --bg:#faf8f3;
+    --accent:#8a4f2d; --accent-soft:#f3ebe2; --accent-line:#dcc9b5;
+    --blue:#1c5f7a; --blue-soft:#eaf3f7; --blue-line:#bcd9e6;
+    --green:#2e6b3e; --green-soft:#ecf6ee; --green-line:#bfe0c6;
+    --amber:#8a5a10; --amber-soft:#fbf2df; --amber-line:#ecd7a8;
+    --red:#9a2f22; --red-soft:#fbeae6; --red-line:#ecc3b8;
+    --indigo:#473c78; --indigo-soft:#eeebf6; --indigo-line:#cdc5e6;
+    --code-bg:#f7f5f0;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:"Noto Serif SC","Songti SC",Georgia,"Microsoft YaHei",serif;
+        font-size:16.5px; line-height:1.85; -webkit-font-smoothing:antialiased; }
+  .layout{ display:flex; max-width:1280px; margin:0 auto; }
+  nav{ position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
+       width:280px; min-width:280px; padding:28px 16px 60px; background:var(--paper);
+       border-right:1px solid var(--line); font-size:13.5px; font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  nav .navtitle{ font-weight:800; font-size:15px; color:var(--accent); margin-bottom:2px; }
+  nav .navsub{ color:var(--faint); font-size:11.5px; margin-bottom:14px; }
+  nav a{ display:block; color:var(--muted); text-decoration:none; padding:3px 9px; border-radius:7px; border-left:2px solid transparent; }
+  nav a:hover{ background:var(--accent-soft); color:var(--accent); }
+  nav a.chap{ font-weight:700; color:var(--ink); margin-top:12px; }
+  nav a.sub{ padding-left:20px; font-size:12px; color:var(--faint); }
+  main{ flex:1; min-width:0; padding:44px 52px 120px; background:var(--paper); }
+  @media (max-width:1000px){ nav{ display:none; } main{ padding:28px 18px 70px; } body{ font-size:16px; } }
+  header.doc{ border-bottom:2px solid var(--accent-line); padding-bottom:22px; margin-bottom:8px; }
+  header.doc .kicker{ display:inline-block; background:var(--accent); color:#fff; font-size:12px;
+       font-weight:700; letter-spacing:1px; padding:4px 13px; border-radius:20px; font-family:sans-serif; }
+  header.doc h1{ font-size:29px; line-height:1.34; margin:15px 0 10px; letter-spacing:.3px; color:#000; }
+  header.doc .lead{ color:var(--muted); font-size:16.5px; max-width:850px; }
+  header.doc .how{ margin-top:16px; background:var(--paper2); border:1px solid var(--line);
+       border-radius:12px; padding:13px 17px; font-size:14.5px; color:var(--muted); }
+  h2.chap{ font-size:24px; margin:52px 0 6px; padding-top:16px; border-top:1px dashed var(--line); letter-spacing:.3px; color:#000; }
+  h2.chap .cn{ display:inline-block; background:var(--accent); color:#fff; font-size:14px; font-weight:800;
+       min-width:34px; height:34px; line-height:34px; text-align:center; border-radius:9px; margin-right:11px; vertical-align:middle; padding:0 7px; font-family:sans-serif; }
+  .chap-intro{ color:var(--muted); font-size:15.5px; margin:8px 0 4px; }
+  h3{ font-size:18.5px; margin:30px 0 8px; color:#111; }
+  h4{ font-size:16px; margin:20px 0 6px; color:var(--accent); font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  p{ margin:10px 0; } strong{ color:#000; font-weight:700; }
+  em{ font-style:normal; color:var(--amber); font-weight:700; }
+  ul,ol{ margin:9px 0; padding-left:24px; } li{ margin:5px 0; }
+  code{ font-family:"JetBrains Mono","Fira Code",Consolas,monospace; font-size:.85em;
+        background:#eee6d8; color:#6e3f1f; padding:2px 6px; border-radius:5px; }
+  .box{ border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:10px;
+        padding:13px 18px; margin:16px 0; background:var(--paper); }
+  .box.g{ border-left-color:var(--green); background:var(--green-soft); }
+  .box.r{ border-left-color:var(--red); background:var(--red-soft); }
+  .box.a{ border-left-color:var(--amber); background:var(--amber-soft); }
+  .box.b{ border-left-color:var(--blue); background:var(--blue-soft); }
+  .box.ig{ border-left-color:var(--indigo); background:var(--indigo-soft); }
+  .box .h{ font-weight:800; margin-bottom:4px; font-size:15px; color:var(--accent); }
+  .box.g .h{ color:var(--green); } .box.r .h{ color:var(--red); } .box.a .h{ color:var(--amber); }
+  .box.b .h{ color:var(--blue); } .box.ig .h{ color:var(--indigo); }
+  .box p{ margin:6px 0; }
+  .lab{ border:1.5px solid var(--green-line); background:#f0f8f1;
+        border-radius:12px; padding:14px 18px 14px 52px; margin:18px 0; position:relative; }
+  .lab::before{ content:"🛠"; position:absolute; left:16px; top:13px; font-size:21px; }
+  .lab .lbl{ display:block; font-size:12.5px; font-weight:800; color:var(--green); letter-spacing:1px; margin-bottom:4px; font-family:sans-serif; }
+  pre{ background:#f7f5f0; border:1px solid #e0d8c8; border-radius:9px; padding:0; margin:12px 0; overflow:hidden; }
+  pre .bar{ display:flex; gap:6px; align-items:center; padding:7px 12px; background:#efe9df; border-bottom:1px solid #e0d8c8; }
+  pre .bar .dot{ width:10px; height:10px; border-radius:50%; } pre .bar .r{ background:#d96459; } pre .bar .y{ background:#c79a2e; } pre .bar .g{ background:#4fae5e; }
+  pre .bar .nm{ margin-left:6px; color:#5a5248; font-size:11.5px; font-family:"JetBrains Mono",monospace; }
+  pre code{ display:block; background:none; color:#1a1a1a; padding:14px 16px; font-size:12.9px; line-height:1.7; overflow-x:auto; }
+  pre code .c{ color:#555; font-style:italic; } pre code .k{ color:#0033aa; } pre code .s{ color:#006600; } pre code .f{ color:#005a7a; } pre code .n{ color:#6a1b9a; }
+  .diagram{ font-family:"JetBrains Mono",monospace; font-size:12.8px; background:#fbf9f4;
+            border:1px solid var(--line); border-radius:10px; padding:15px 17px; margin:14px 0; line-height:1.85; overflow-x:auto; white-space:pre; color:#1a1a1a; }
+  .hl{ background:#fbeec4; padding:0 4px; border-radius:4px; font-weight:700; }
+  .backtop{ display:inline-block; font-size:12px; color:var(--faint); text-decoration:none; float:right; margin-top:6px; font-family:sans-serif; }
+  table{ border-collapse:collapse; width:100%; margin:14px 0; font-size:14.5px; font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  th,td{ border:1px solid var(--line); padding:7px 11px; text-align:left; vertical-align:top; }
+  th{ background:var(--paper2); color:var(--accent); font-weight:700; }
+  tr:nth-child(even) td{ background:#fbf8f0; }
+  .src{ font-size:12.5px; color:var(--faint); margin:2px 0 0; font-family:sans-serif; }
+  footer{ margin-top:60px; padding-top:22px; border-top:2px solid var(--accent-line); color:var(--muted); font-size:14px; }
+  @media print{
+    nav{ display:none; } main{ padding:0; } body{ background:#fff; font-size:11.5pt; }
+    .box,.lab,pre,table,.diagram{ break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav>
+  <div class="navtitle">L4 · 评测打分</div>
+  <div class="navsub">score15_fp32.py · W 判优</div>
+  <a href="#intro">导读 · 评测是判优的尺子</a>
+  <a href="#wmap">W 在总分里 + 三个 score15</a>
+  <a href="#formula">1 · W 打分公式</a>
+  <a href="#evalm">2 · evalm:对真值算 RMSE+ACC</a>
+  <a href="#w1569">3 · W15 vs W69 + 官方15指标</a>
+  <a href="#teacher">4 · 教师缓存(天花板)</a>
+  <a href="#remap" class="chap">5 · ★remap_state 权重重映射(大坑)</a>
+  <a href="#fp32">6 · fp32 口径(bo3b fp16 NaN)</a>
+  <a href="#judge">7 · 判优:超 bo3b 基线</a>
+  <a href="#three">8 · 三个评测脚本的分工</a>
+  <a href="#run">9 · 怎么打分 + 怎么改</a>
+  <a href="#hands">10 · 动手实践</a>
+  <a href="#sum" class="chap">小结 + 四课闭环</a>
+</nav>
+
+<main>
+
+<header class="doc" id="top">
+  <span class="kicker">复赛备战 · 逐代码讲义 L4 · 评测打分(判优的尺子)</span>
+  <h1>评测打分逐代码:对真值算 W、判优、避坑<br><span style="font-size:20px;color:var(--muted)">score15_fp32.py · 官方 15 指标 W15/W69 · RMSE + ACC · 超 bo3b 才算数</span></h1>
+  <p class="lead">前三课每个改动(快了、省了、准了)到底算不算数,全靠这把尺子量。这一课打开 <code>score15_fp32.py</code>:W 怎么算(RMSE 项 + ACC 项)、怎么对真值 ERA5 评、W15 和 W69 啥区别、<strong>权重 remap 这个部署大坑</strong>怎么填、为什么用 fp32 口径判优最准、怎么和 bo3b 基线比。全程白底深字、可打印。</p>
+  <div class="how"><strong>怎么读:</strong>第 1 章(公式)和第 5 章(remap 坑)最关键。公式让你看懂"提升 W 该往哪使劲";remap 是"训练命名 ≠ 部署命名"的隐形杀手,不填会静默掉分。代码框对应 <code>最优项目代码/04_评测/</code>。</p>
+</header>
+
+<h2 class="chap" id="intro" style="border-top:none; margin-top:26px;"><span class="cn">读</span>导读:评测不加分,但决定一切加分算不算<a href="#top" class="backtop">↑</a></h2>
+<p>L1 让它快(V)、L2 让它省(U)、L3 让它准(W)。但<span class="hl">"准没准"得有一把和官方一致的尺子来量</span>——否则你以为涨了,提交才发现没涨甚至跌了。<code>score15_fp32.py</code> 就是这把尺子:在本地用官方口径(对真值 ERA5、15 指标、RMSE+ACC)给学生打 W 分,和 bo3b 基线比,判断这次改动该不该留。</p>
+<div class="box ig">
+  <div class="h">一句话抓住这一课</div>
+  <p>W 打分 = 把学生和教师在 15 个气象指标上比 RMSE 和 ACC,每项封顶 1 分(<code>min(比值, 1)</code>),加起来 ×20 = 满分 40。<span class="hl">评测的两个隐形坑:① 用 fp32 跑(bo3b 在 fp16 会 NaN);② 训练命名要 remap 成部署命名,否则权重静默加载错</strong>。这一课把这两个坑讲透。</p>
+</div>
+
+<h2 class="chap" id="wmap"><span class="cn">分</span>W 在总分里的位置 + 三个 score15<a href="#top" class="backtop">↑</a></h2>
+<p>当前最优 <strong>96.1213 = U 38.4288 + V 18.9244 + W 38.4387</strong>。本课就是把 <strong>W 38.4387(满分 40)</strong>这个数算出来、并用它判优。三个评测脚本口径不同,先认清:</p>
+<table>
+  <tr><th>脚本</th><th>口径</th><th>什么时候用</th></tr>
+  <tr><td><code>score15_fp32.py</code></td><td>纯 fp32 forward,era5_real/2000</td><td><span class="hl">判优最准</span>(bo3b fp16 会 NaN,fp32 finite);选权重就看它</td></tr>
+  <tr><td><code>score15_dcu.py</code></td><td>CppRunner fast_forward + matrix-core libgemm(fp16)</td><td>最接近真实评测环境;确认部署链路没掉分</td></tr>
+  <tr><td><code>score15_diff.py</code></td><td>逐通道对比 W1 vs bo3b vs 教师</td><td>诊断:哪些通道涨/跌,指导 L3 下一步往哪补</td></tr>
+</table>
+<p class="src">本课主讲 fp32 版(判优口径);8 节会对比另外两个。</p>
+
+<h2 class="chap" id="formula"><span class="cn">1</span>W 打分公式(看懂它就知道往哪使劲)<a href="#top" class="backtop">↑</a></h2>
+<p><strong>这段干啥:</strong>一行算出 W。每个指标两部分:RMSE 项 <code>min((教师RMSE/学生RMSE)², 1)</code>、ACC 项 <code>min((学生ACC/教师ACC)², 1)</code>。两部分各封顶 1(学生再好也不超教师对应项),相加 ≤ 2,对所有指标取平均再 ×20 → 满分 40。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">score15_fp32.py · L87</span></div><code><span class="k">def</span> <span class="f">W</span>(ix):
+    <span class="k">return</span> <span class="f">float</span>(np.mean(
+        np.minimum((t_rmse[ix]/sr[ix])**<span class="n">2</span>, <span class="n">1</span>)      <span class="c"># RMSE 项:学生越准(sr 小)越接近 1</span>
+      + np.minimum((sa[ix]/t_acc[ix])**<span class="n">2</span>, <span class="n">1</span>)    <span class="c"># ACC 项:学生越高(sa 大)越接近 1</span>
+    ) * <span class="n">20</span>)
+<span class="c"># t_rmse/t_acc=教师, sr/sa=学生; ix=要算哪些通道(15指标 or 全69)</span></code></pre>
+<div class="box b">
+  <div class="h">公式告诉你的提分策略</div>
+  <ul style="margin:4px 0 0;">
+    <li><span class="hl">已封顶(min=1)的通道,再优化白费</strong> —— 学生已追平/超教师的指标(比值≥1),分已满,别在它身上花训练预算。</li>
+    <li><strong>没封顶的通道才是提分点</strong> —— 这正是 L3 真值监督专挑"温度 + 低层 u/v/q"补的原因(它们是没满分的拖后腿项)。</li>
+    <li>RMSE 项对"准"敏感、ACC 项对"形态相关"敏感,两个一起看。</li>
+  </ul>
+</div>
+
+<h2 class="chap" id="evalm"><span class="cn">2</span>evalm:对真值算 RMSE + ACC(逐通道)<a href="#top" class="backtop">↑</a></h2>
+<p><strong>这段干啥:</strong>跑一遍测试集,对每个样本:拼输入 → 模型出 <code>ss/su</code> → 反归一化成物理量 <code>pp</code> → 和真值 <code>gt</code>(反归一化的 outvar)比。RMSE = 逐通道 <code>sqrt(mean((gt−pp)²))</code>;ACC(异常相关)= 各自减气候态 clim 后的相关系数。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">score15_fp32.py · L28–L39</span></div><code><span class="k">def</span> <span class="f">evalm</span>(model):
+  <span class="k">for</span> data <span class="k">in</span> dp.test_dataloader():
+    invar, outvar = data[<span class="n">0</span>], data[<span class="n">1</span>]
+    x = torch.cat([invar[:,:<span class="n">4</span>], masks, invar[:,<span class="n">4</span>:]], <span class="n">1</span>)        <span class="c"># 4地面 + 3静态掩膜 + 65高空 = 72</span>
+    ss, su = model(x); su = su.reshape(<span class="n">1</span>,<span class="n">65</span>,...)
+    pp = (torch.cat([ss,su],<span class="n">1</span>)*sd_t + mu_t)[<span class="n">0</span>].cpu().numpy()   <span class="c"># 预测,反归一化</span>
+    gt = (outvar*sd_t + mu_t)[<span class="n">0</span>].cpu().numpy()              <span class="c"># ★真值(t+6h),反归一化</span>
+    rmse += np.sqrt(((gt-pp)**<span class="n">2</span>).mean(axis=(<span class="n">1</span>,<span class="n">2</span>)))            <span class="c"># 逐通道 RMSE</span>
+    pa = pp-clim; la = gt-clim                              <span class="c"># 减气候态 → 异常</span>
+    num += (pa*la).sum(...); p2 += (pa**<span class="n">2</span>).sum(...); l2 += (la**<span class="n">2</span>).sum(...)
+  <span class="k">return</span> rmse/n, num/(np.sqrt(p2*l2)+<span class="n">1e-8</span>), n             <span class="c"># (RMSE, ACC, 样本数)</span></code></pre>
+<div class="box a"><div class="h">和 L3 的呼应</div><p>注意 <code>gt</code> 用的是 <strong>真值 outvar</strong>,不是教师输出。这正是 L3 "选优对真值"的口径——<span class="hl">训练时怎么判优、评测时就怎么打分,两边口径必须一致</span>,改动才可信。</p></div>
+
+<h2 class="chap" id="w1569"><span class="cn">3</span>W15 vs W69 + 官方 15 指标<a href="#top" class="backtop">↑</a></h2>
+<p><strong>这段干啥:</strong>官方只评 15 个指标(<code>OFFICIAL15</code>),<code>sel</code> 是它们在 69 通道里的下标。<code>W(sel)</code>=W15(真实提交口径),<code>W(range(69))</code>=W69(全通道,参考)。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">score15_fp32.py · L24–L25 / L90</span></div><code>OFFICIAL15 = [<span class="s">"mean_sea_level_pressure"</span>,<span class="s">"10m_u..."</span>,<span class="s">"10m_v..."</span>,<span class="s">"2m_temperature"</span>,
+  <span class="s">"geopotential_850/700/500"</span>,<span class="s">"specific_humidity_850/700/500"</span>,
+  <span class="s">"temperature_850/700/500"</span>,<span class="s">"u_..._500"</span>,<span class="s">"v_..._500"</span>]   <span class="c"># 共15</span>
+sel = [ds.channels.index(v) <span class="k">for</span> v <span class="k">in</span> OFFICIAL15]              <span class="c"># 15 指标在 69 里的下标</span>
+<span class="f">print</span>(<span class="s">f"W15={W(sel):.4f}  W69={W(list(range(69))):.4f} ..."</span>)</code></pre>
+<div class="box b"><div class="h">为什么 W15 通常比 W69 略低</div><p>15 指标里含 4 个近地面变量(msl/10m_u/10m_v/2m_t),正是学生退化最多的(各约 1.17–1.19×),拉低均值;而 69 通道里大量高层 z/t/q 学生拟合好(拉高均值)。<span class="hl">官方按 W15 算,所以判优盯 W15</span>。</p></div>
+
+<h2 class="chap" id="teacher"><span class="cn">4</span>教师缓存(天花板,只算一次)<a href="#top" class="backtop">↑</a></h2>
+<p><strong>这段干啥:</strong>W 公式里要教师的 RMSE/ACC 当分母。教师跑一遍很慢,所以缓存到 <code>/tmp/teacher_real2000.npz</code>,之后所有候选权重判优都复用同一份教师参照(也保证公平)。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">score15_fp32.py · L42–L49</span></div><code>TC = <span class="s">"/tmp/teacher_real2000.npz"</span>
+<span class="k">if</span> os.path.exists(TC):
+    z = np.load(TC); t_rmse=z[<span class="s">"r"</span>]; t_acc=z[<span class="s">"a"</span>]; npairs=<span class="f">int</span>(z[<span class="s">"n"</span>])   <span class="c"># 复用缓存</span>
+<span class="k">else</span>:
+    teacher = Pangu(...).eval(); teacher.load_state_dict(...)
+    t_rmse,t_acc,npairs = evalm(teacher); np.savez(TC, r=t_rmse,a=t_acc,n=npairs)  <span class="c"># 算一次存下</span></code></pre>
+
+<h2 class="chap" id="remap"><span class="cn">5</span>★remap_state:权重重映射(部署/评测大坑)<a href="#top" class="backtop">↑</a></h2>
+<p><strong>这段干啥:</strong><span class="hl">训练脚本(distill_truth)和部署模型(MaxVit3DStudent)对同一层的命名不一样</strong>——unified-API vs split-API:训练里叫 <code>patchembed2d.proj.weight</code>,部署里叫 <code>patchembed2d.embedder.proj.weight</code>;recovery、Sampler 也类似,还要双填(<code>.recovery</code> 和 <code>.Reconvery</code> 两个名都填),并丢掉守恒层 <code>conserv.*</code>。不 remap 的后果:<code>load_state_dict(strict=False)</code> 会<strong>静默跳过对不上的键 → 那些层用随机初始化 → W 暴跌但不报错</strong>。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">score15_fp32.py · L54–L83(节选)</span></div><code><span class="k">def</span> <span class="f">remap_state</span>(sdk, msd):
+    <span class="k">if</span> <span class="s">"patchembed2d.embedder.proj.weight"</span> <span class="k">in</span> sdk: <span class="k">return</span> sdk   <span class="c"># 已是部署命名,原样</span>
+    out = dict(sdk)
+    <span class="c"># embed: proj → embedder.proj(2d 补 kz 维)</span>
+    out[<span class="s">"patchembed2d.embedder.proj.weight"</span>] = out.pop(<span class="s">"patchembed2d.proj.weight"</span>).reshape(...)
+    <span class="c"># recovery: conv → recovery.proj + Reconvery.proj(双填)</span>
+    <span class="k">for</span> d <span class="k">in</span> [<span class="s">"patchrecovery2d"</span>,<span class="s">"patchrecovery3d"</span>]:
+        v = out.pop(<span class="s">f"{d}.conv.weight"</span>)
+        <span class="k">for</span> tgt <span class="k">in</span> [<span class="s">f"{d}.recovery.proj.weight"</span>, <span class="s">f"{d}.Reconvery.proj.weight"</span>]:
+            <span class="k">if</span> tgt <span class="k">in</span> msd: out[tgt] = v.reshape(msd[tgt].shape)
+    <span class="c"># Sampler → sampler;丢 conserv.*</span>
+    ...
+    <span class="k">return</span> out
+sdk2 = remap_state(ck[<span class="s">"model_state_dict"</span>], st.state_dict())
+r = st.load_state_dict(sdk2, strict=<span class="k">False</span>)
+<span class="k">if</span> len(r.missing_keys) &gt; <span class="n">0</span>:
+    <span class="f">print</span>(<span class="s">f"[警告] load 后仍缺 {len(r.missing_keys)} key(随机init): {r.missing_keys[:5]}"</span>)   <span class="c">// ★必看这行!</span></code></pre>
+<div class="box r"><div class="h">决赛保命:永远盯 missing_keys</div><p>加载权重后<strong>一定看 <code>missing_keys</code> 是不是 0</strong>(或只剩无害 buffer)。<span class="hl">非 0 = 有层在用随机初始化 = 分数会无声暴跌</span>。这是"明明权重对、分数却很烂"的头号原因。L1 推理里 <code>load_state_dict(strict=False)</code> 也一样,务必核对。</p></div>
+
+<h2 class="chap" id="fp32"><span class="cn">6</span>fp32 口径:为什么判优要用 fp32<a href="#top" class="backtop">↑</a></h2>
+<p><strong>这段干啥:</strong>整个 evalm 在 fp32 下跑。<span class="hl">bo3b 这类高激活权重在 fp16 前向会 NaN(L3/L1 讲过的残差溢出),fp32 才 finite</strong>,所以判优口径用 fp32 最稳最准。模型构造时不 <code>.half()</code>,输入也 <code>torch.float32</code>。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">score15_fp32.py · L13 / L53(fp32 关键)</span></div><code><span class="k">import</span> maxvit3d_student <span class="k">as</span> M; M.set_sdpa(<span class="k">False</span>)        <span class="c"># 同 L1,关 DCU 上费显存的 SDPA</span>
+st = MaxVit3DStudent(...).to(dev).eval()              <span class="c"># ★不 .half() → 全程 fp32(bo3b 不 NaN)</span></code></pre>
+<div class="box b"><div class="h">三种数值口径对应关系(把三课串起来)</div><p>判优用 <strong>fp32</strong>(score15_fp32,最准);训练用 <strong>bf16</strong>(L3,稳且快);部署用 <strong>fp16 + ENC_FP32</strong>(L1,只把溢出的残差流升 fp32)。<span class="hl">三处口径不同但要相互印证</span>:fp32 选出的好权重,部署 fp16 后用 score15_dcu 复测,确认没掉分才提交。</p></div>
+
+<h2 class="chap" id="judge"><span class="cn">7</span>判优:超 bo3b 基线才算数<a href="#top" class="backtop">↑</a></h2>
+<p><strong>这段干啥:</strong>最后一行直接和 bo3b 基线比,打印是否超基线。判优就是"同口径下,新候选 W 有没有超过当前最好权重"。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">score15_fp32.py · L88–L91</span></div><code><span class="f">print</span>(<span class="s">f"=== score15 fp32 @ era5_real/2000 (pairs={n}) ==="</span>)
+<span class="f">print</span>(<span class="s">f"W15={W(sel):.4f}  W69={W(range(69)):.4f}  RMSE15={sr[sel].mean():.4f}  ACC15={sa[sel].mean():.4f}"</span>)
+<span class="f">print</span>(<span class="s">f"bo3b基线≈38.44 → {'★超基线!' if W(sel)&gt;38.44 else '低于' ...}"</span>)</code></pre>
+<div class="box a">
+  <div class="h">基线数字的口径说明(别被数字绊住)</div>
+  <p>代码里写死的 fp32 口径 bo3b 基线 ≈ <strong>38.44</strong>(和最终评测 W=38.4387 吻合)。用户记录里还有个 bo3b 判优参照 <strong>37.6276</strong>,那应是<span class="hl">另一口径(如 score15_dcu 的 fp16 fast_forward,或不同 pairs 数)</span>下的数。判优铁律不是记死某个数,而是:<strong>新候选和 bo3b 在【完全相同口径】下比 W,超了才留</strong>。换数据/换脚本就重测基线,别跨口径比。</p>
+</div>
+
+<h2 class="chap" id="three"><span class="cn">8</span>三个评测脚本的分工(配合用)<a href="#top" class="backtop">↑</a></h2>
+<table>
+  <tr><th>脚本</th><th>调用</th><th>角色</th></tr>
+  <tr><td><code>score15_fp32.py</code></td><td><code>python score15_fp32.py student.pth</code></td><td>选权重(最准 fp32 判优)</td></tr>
+  <tr><td><code>score15_dcu.py</code></td><td><code>python score15_dcu.py student.pth libgemm.so</code></td><td>部署复测(matrix-core fp16,最接近评测;验证 L1/L2 没掉分)</td></tr>
+  <tr><td><code>score15_diff.py</code></td><td><code>python score15_diff.py w1.pth bo3b.pth</code></td><td>逐通道诊断(哪些通道涨/跌 → 指导 L3 下一搏补哪里)</td></tr>
+</table>
+<p><code>score15_dcu.py</code> 内部会 <code>cp libgemm.so</code>、设 <code>FAST_STREAM=1 ENC_FP32=1</code>,用 L1 的 CppRunner <code>fast_forward</code> 跑——<span class="hl">它把 L1/L2/L3 全链路串起来打一个真实分</span>,是提交前最后一道关。</p>
+
+<h2 class="chap" id="run"><span class="cn">9</span>怎么打分 + 怎么改适配<a href="#top" class="backtop">↑</a></h2>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash · DCU 容器(submit_pw 目录)</span></div><code><span class="c"># 1) 选权重:fp32 判优(改 era5_real 路径见脚本头)</span>
+python score15_fp32.py data/checkpoints/student.pth
+<span class="c"># 2) 部署复测:matrix-core 真实口径(提交前必跑)</span>
+python score15_dcu.py  data/checkpoints/student.pth libgemm.so
+<span class="c"># 3) 诊断:候选 vs bo3b 逐通道</span>
+python score15_diff.py candidate.pth data/checkpoints/student.pth</code></pre>
+<table>
+  <tr><th>换方向后要改</th><th>怎么改</th></tr>
+  <tr><td>换了评测指标集</td><td>改 <code>OFFICIAL15</code> 列表为新题的指标,<code>sel</code> 自动跟着变。</td></tr>
+  <tr><td>换了测试年份/数据</td><td>改脚本头 <code>ds.test_ratio</code> / <code>data_dir</code>;<span class="hl">删掉旧教师缓存 <code>/tmp/teacher_*.npz</code></span> 重算基线。</td></tr>
+  <tr><td>换了 W 公式</td><td>改 <code>W()</code> 那一行(比如权重/封顶规则)。</td></tr>
+  <tr><td>新模型命名又不同</td><td>在 <code>remap_state</code> 里加新映射;<strong>跑完核对 missing_keys=0</strong>。</td></tr>
+</table>
+
+<h2 class="chap" id="hands"><span class="cn">10</span>动手实践清单<a href="#top" class="backtop">↑</a></h2>
+<div class="lab"><span class="lbl">动手实践 1 · 打一次分</span>跑 <code>python score15_fp32.py data/checkpoints/student.pth</code>,记下 W15/W69/RMSE15/ACC15,确认终端<strong>没有</strong> <code>[警告] load 后仍缺 N key</code>(有就是 remap 没填全)。</div>
+<div class="lab"><span class="lbl">动手实践 2 · 故意触发 remap 坑</span>临时把 <code>remap_state</code> 第一行的 <code>return sdk</code> 改成直接返回原始 <code>sdk</code>(跳过映射),重跑,看 W 暴跌 + missing_keys 报警。亲身体会"命名不对→静默掉分"。改回来。</div>
+<div class="lab"><span class="lbl">动手实践 3 · 三口径交叉验证</span>同一个 student.pth 分别跑 fp32 和 dcu 两个脚本,比 W15。理解为什么判优用 fp32、提交前要用 dcu 复测(口径差异 = 部署链路的真实影响)。</div>
+<div class="lab"><span class="lbl">动手实践 4 · 用 diff 找下一搏</span>跑 <code>score15_diff.py</code> 比候选和 bo3b,找出仍低于教师(没封顶)的通道,据此决定 L3 下一次该开 <code>--truth-windq</code> 还是 <code>--chan-reweight</code> 补哪几个通道。</div>
+
+<h2 class="chap" id="sum"><span class="cn">收</span>小结 + 四课闭环<a href="#top" class="backtop">↑</a></h2>
+<div class="box g">
+  <div class="h">L4 你掌握了什么</div>
+  <ul style="margin:4px 0 0;">
+    <li><strong>W 公式</strong>:RMSE 项 + ACC 项,各 <code>min(比值,1)</code> 封顶,×20 = 满分 40;已封顶的通道别再优化,提分要找没封顶的。</li>
+    <li><strong>evalm</strong>:对真值 ERA5 逐通道算 RMSE + ACC(异常相关);口径和 L3 选优一致。</li>
+    <li><strong>W15/W69</strong>:官方按 W15;近地面 4 变量拖低 W15。</li>
+    <li><strong>★remap + missing_keys</strong>:训练命名 ≠ 部署命名,必须 remap;加载后盯 missing_keys=0,否则静默掉分。</li>
+    <li><strong>fp32 判优</strong>:bo3b fp16 NaN,fp32 最稳;判优 fp32、部署 fp16、提交前 dcu 复测。</li>
+    <li><strong>判优</strong>:同口径超 bo3b 才留;换口径/数据重测基线。</li>
+  </ul>
+  <p style="margin-top:8px;">四课闭环:<strong>L3 训练</strong>把模型练准 → <strong>L4 评测</strong>判优选出最好权重 → <strong>L1 推理</strong>把它又快又省地跑出来 → <strong>L2 matrix-core</strong>再省 121MiB。判优口径(L4)既指导训练选优(L3),又验证部署没掉分(L1/L2)。这就是 96.12 这套代码的完整工作流——<span class="hl">每一分都能定位到一段代码、一个口径、一次实测</span>。决赛换方向时,照这四课的代码与方法论,从 baseline 起逐项打分、逐项优化即可。</p>
+</div>
+
+<footer>
+  <p>复赛备战 · 逐代码讲义 L4 · 评测打分 · 配套代码见 <code>复赛备战课程/最优项目代码/04_评测/</code></p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

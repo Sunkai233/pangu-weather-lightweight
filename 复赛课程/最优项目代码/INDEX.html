@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>最优项目代码 · 索引(位置 / 功能 / 调用)· 盘古轻量化 + 海光 DCU</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --muted:#3a352f; --faint:#5a5248; --line:#e0d8c8;
+    --paper:#ffffff; --paper2:#f7f5f0; --bg:#faf8f3;
+    --accent:#8a4f2d; --accent-soft:#f3ebe2; --accent-line:#dcc9b5;
+    --blue:#1c5f7a; --blue-soft:#eaf3f7; --blue-line:#bcd9e6;
+    --green:#2e6b3e; --green-soft:#ecf6ee; --green-line:#bfe0c6;
+    --amber:#8a5a10; --amber-soft:#fbf2df; --amber-line:#ecd7a8;
+    --red:#9a2f22; --red-soft:#fbeae6; --red-line:#ecc3b8;
+    --indigo:#473c78; --indigo-soft:#eeebf6; --indigo-line:#cdc5e6;
+    --code-bg:#f7f5f0;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:"Noto Serif SC","Songti SC",Georgia,"Microsoft YaHei",serif;
+        font-size:16.5px; line-height:1.85; -webkit-font-smoothing:antialiased; }
+  .layout{ display:flex; max-width:1280px; margin:0 auto; }
+  nav{ position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
+       width:280px; min-width:280px; padding:28px 16px 60px; background:var(--paper);
+       border-right:1px solid var(--line); font-size:13.5px; font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  nav .navtitle{ font-weight:800; font-size:15px; color:var(--accent); margin-bottom:2px; }
+  nav .navsub{ color:var(--faint); font-size:11.5px; margin-bottom:14px; }
+  nav a{ display:block; color:var(--muted); text-decoration:none; padding:3px 9px; border-radius:7px; border-left:2px solid transparent; }
+  nav a:hover{ background:var(--accent-soft); color:var(--accent); }
+  nav a.chap{ font-weight:700; color:var(--ink); margin-top:12px; }
+  nav a.sub{ padding-left:20px; font-size:12px; color:var(--faint); }
+  main{ flex:1; min-width:0; padding:44px 52px 120px; background:var(--paper); }
+  @media (max-width:1000px){ nav{ display:none; } main{ padding:28px 18px 70px; } body{ font-size:16px; } }
+  header.doc{ border-bottom:2px solid var(--accent-line); padding-bottom:22px; margin-bottom:8px; }
+  header.doc .kicker{ display:inline-block; background:var(--accent); color:#fff; font-size:12px;
+       font-weight:700; letter-spacing:1px; padding:4px 13px; border-radius:20px; font-family:sans-serif; }
+  header.doc h1{ font-size:30px; line-height:1.32; margin:15px 0 10px; letter-spacing:.3px; }
+  header.doc .lead{ color:var(--muted); font-size:16.5px; max-width:840px; }
+  h2.chap{ font-size:24px; margin:52px 0 6px; padding-top:16px; border-top:1px dashed var(--line); letter-spacing:.3px; }
+  h2.chap .cn{ display:inline-block; background:var(--accent); color:#fff; font-size:14px; font-weight:800;
+       min-width:34px; height:34px; line-height:34px; text-align:center; border-radius:9px; margin-right:11px; vertical-align:middle; padding:0 7px; font-family:sans-serif; }
+  .chap-intro{ color:var(--muted); font-size:15.5px; margin:8px 0 4px; }
+  h3{ font-size:18.5px; margin:30px 0 8px; color:var(--ink); }
+  p{ margin:10px 0; } strong{ color:var(--ink); font-weight:700; }
+  em{ font-style:normal; color:var(--amber); font-weight:700; }
+  ul,ol{ margin:9px 0; padding-left:24px; } li{ margin:5px 0; }
+  code{ font-family:"JetBrains Mono","Fira Code",Consolas,monospace; font-size:.85em;
+        background:#f0ebdd; color:#7a4520; padding:2px 6px; border-radius:5px; }
+  .box{ border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:10px;
+        padding:13px 18px; margin:16px 0; background:var(--paper); }
+  .box.g{ border-left-color:var(--green); background:var(--green-soft); }
+  .box.r{ border-left-color:var(--red); background:var(--red-soft); }
+  .box.a{ border-left-color:var(--amber); background:var(--amber-soft); }
+  .box.b{ border-left-color:var(--blue); background:var(--blue-soft); }
+  .box.ig{ border-left-color:var(--indigo); background:var(--indigo-soft); }
+  .box .h{ font-weight:800; margin-bottom:4px; font-size:15px; color:var(--accent); }
+  .box.g .h{ color:var(--green); } .box.r .h{ color:var(--red); } .box.a .h{ color:var(--amber); }
+  .box.b .h{ color:var(--blue); } .box.ig .h{ color:var(--indigo); }
+  .box p{ margin:6px 0; }
+  /* 文件卡片 */
+  .file{ border:1px solid var(--line); border-radius:12px; margin:16px 0; background:var(--paper);
+         overflow:hidden; box-shadow:0 2px 7px rgba(120,90,50,.05); }
+  .file .top{ display:flex; align-items:center; gap:11px; padding:11px 16px;
+              background:var(--paper2); border-bottom:1px solid var(--line); }
+  .file .fn{ font-family:"JetBrains Mono",monospace; font-weight:800; font-size:16px; color:var(--accent); flex:1; min-width:0; word-break:break-all; }
+  .file .tag{ flex:none; font-size:11.5px; font-family:sans-serif; padding:2px 10px; border-radius:14px;
+              border:1px solid var(--accent-line); background:var(--accent-soft); color:var(--accent); white-space:nowrap; }
+  .file .tag.star{ background:#fff3d6; border-color:#e8c879; color:#9a6a14; }
+  .file .body{ padding:12px 18px 15px; }
+  .file .row{ margin:7px 0; }
+  .file .row .lbl{ display:inline-block; font-weight:800; color:var(--accent); font-size:12.5px;
+                   font-family:sans-serif; letter-spacing:.5px; min-width:78px; vertical-align:top; }
+  .file .row .lbl.loc{ color:var(--blue); } .file .row .lbl.fun{ color:var(--green); } .file .row .lbl.use{ color:var(--indigo); }
+  .file .row .v{ display:inline; }
+  pre{ background:#f7f5f0; border:1px solid #e0d8c8; border-radius:9px; padding:0; margin:8px 0 4px; overflow:hidden; }
+  pre .bar{ display:flex; gap:6px; padding:7px 12px; background:#efe9df; border-bottom:1px solid #e0d8c8; }
+  pre .bar .dot{ width:10px; height:10px; border-radius:50%; } pre .bar .r{ background:#d96459; } pre .bar .y{ background:#c79a2e; } pre .bar .g{ background:#4fae5e; }
+  pre .bar .nm{ margin-left:6px; color:#5a5248; font-size:11.5px; font-family:"JetBrains Mono",monospace; }
+  pre code{ display:block; background:none; color:#1a1a1a; padding:13px 16px; font-size:12.8px; line-height:1.65; overflow-x:auto; }
+  pre code .c{ color:#555; } pre code .k{ color:#0033aa; } pre code .s{ color:#006600; }
+  .diagram{ font-family:"JetBrains Mono",monospace; font-size:12.8px; background:var(--paper2);
+            border:1px solid var(--line); border-radius:10px; padding:15px 17px; margin:14px 0; line-height:1.8; overflow-x:auto; white-space:pre; color:#43392e; }
+  .hl{ background:#fbeec4; padding:0 4px; border-radius:4px; font-weight:700; }
+  .backtop{ display:inline-block; font-size:12px; color:var(--faint); text-decoration:none; float:right; margin-top:6px; font-family:sans-serif; }
+  footer{ margin-top:60px; padding-top:22px; border-top:2px solid var(--accent-line); color:var(--muted); font-size:14px; }
+  @media print{
+    nav{ display:none; } main{ padding:0; } body{ background:#fff; font-size:11.5pt; }
+    .file{ break-inside:avoid; box-shadow:none; } .box{ break-inside:avoid; } pre{ box-shadow:none; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav>
+  <div class="navtitle">最优项目代码索引</div>
+  <div class="navsub">位置 / 功能 / 调用</div>
+  <a href="#intro">这套代码是什么 · 最优配置</a>
+  <a href="#flow">运行依赖关系图</a>
+  <a href="#tree">目录结构</a>
+  <a href="#env">先决条件 · 上机环境</a>
+  <a href="#m1" class="chap">01 · 推理部署(V+U)</a>
+  <a href="#f-inference" class="sub">inference.py</a>
+  <a href="#f-cpp" class="sub">maxvit3d_cpp.py</a>
+  <a href="#f-student" class="sub">maxvit3d_student.py</a>
+  <a href="#f-libgemm" class="sub">libgemm.so / libflashattn.so</a>
+  <a href="#f-conf" class="sub">conf/config.yaml · 权重链接</a>
+  <a href="#m2" class="chap">02 · matrix-core HIP(U)</a>
+  <a href="#f-gemmlibmmac" class="sub">gemm_lib_mmac.hip ★</a>
+  <a href="#f-mmaciter" class="sub">gemm_mmac 1-4 迭代</a>
+  <a href="#f-wint8" class="sub">gemm_wint8.hip</a>
+  <a href="#f-probe" class="sub">mmac_* 逆向探针组</a>
+  <a href="#f-decode" class="sub">gcn_decode/scan · isa_probe</a>
+  <a href="#f-rocblas" class="sub">gemm_lib / gemm_bench(对照)</a>
+  <a href="#m3" class="chap">03 · 训练(W)</a>
+  <a href="#f-truth" class="sub">distill_truth.py ★</a>
+  <a href="#f-scnet" class="sub">distill_scnet.py</a>
+  <a href="#f-dtrain" class="sub">distill_train.py</a>
+  <a href="#m4" class="chap">04 · 评测打分</a>
+  <a href="#f-score15" class="sub">score15_fp32/dcu/diff.py</a>
+  <a href="#f-result" class="sub">result.py</a>
+  <a href="#m5" class="chap">05 · 参考文档</a>
+  <a href="#quick" class="chap">一页跑通 · Quickstart</a>
+</nav>
+
+<main>
+
+<header class="doc" id="top">
+  <span class="kicker">最优项目代码 · 整理 + 索引(第一步交付)</span>
+  <h1>先导杯赛题二最优项目 · 核心代码全集<br>位置 · 功能 · 怎么调用</h1>
+  <p class="lead">本文件夹把分散在<strong>提交包</strong>、<strong>cpp_stage1 开发目录</strong>、<strong>abc66 训练机</strong>三处的最优项目核心代码收齐到一处,按"推理 / matrix-core / 训练 / 评测 / 参考"五个模块归档。每个文件都标注:<span style="color:var(--blue);font-weight:700">①原位置</span>、<span style="color:var(--green);font-weight:700">②干啥</span>、<span style="color:var(--indigo);font-weight:700">③怎么调用</span>。这是后续逐代码 HTML 讲义的素材底座。</p>
+</header>
+
+<h2 class="chap" id="intro" style="border-top:none; margin-top:26px;"><span class="cn">读</span>这套代码是什么 · 最优配置<a href="#top" class="backtop">↑</a></h2>
+<p>整套方案做的事:用一个 <strong>5.19M 的轻量学生 MaxViT-3D</strong> 通过<strong>知识蒸馏 + 真值双监督</strong>逼近官方 Pangu 教师(64.22M),再叠加<strong>全 HIP/hipBLAS 路由前向(CppRunner)+ 手写矩阵核 GEMM 库(libgemm.so,纯 v_mmac)+ 流式显存优化</strong>,在海光 DCU 上同时把 U(模型大小+显存)、V(时延)、W(精度)三项分数打高。</p>
+
+<div class="box a">
+  <div class="h">★ 最优分配置(本次最高分这条路径用的开关与组件)</div>
+  <ul style="margin:4px 0 0;">
+    <li><strong>权重</strong>:<code>bo3b</code> 学生权重(双叠加包,真值监督蒸馏产出;放在 <code>data/checkpoints/student.pth</code>,需用下载链接取,见下文)。</li>
+    <li><strong>推理开关</strong>:<code>FAST_STREAM=1</code>(输入连续 chunk H2D + recovery 流式 offload,降 GPU 峰值)+ <code>ENC_FP32=1</code>(enc 轻量残差-fp32 混合精度,解锁高激活权重避 fp16 NaN)。两者都是 <code>inference.py</code> 顶部默认开。</li>
+    <li><strong>matrix-core 库</strong>:<code>libgemm.so</code> 来自 <code>gemm_lib_mmac.hip</code> —— 用 gfx936 矩阵核指令 <code>v_mmac</code> 手写 GEMM,<span class="hl"><code>gemm_init</code> 不调 <code>rocblas_initialize</code> → 不加载 Tensile 库 → 省约 155MiB 显存</span>(直接抬 U 的显存分)。</li>
+    <li><strong>注意力</strong>:<code>libflashattn.so</code> 在线 flash 窗口注意力(不物化 N×N 分数矩阵),替 DCU 上没优化好的 torch SDPA。</li>
+  </ul>
+</div>
+
+<div class="box b">
+  <div class="h">三分制 ↔ 代码模块对应(全局指挥棒)</div>
+  <ul style="margin:4px 0 0;">
+    <li><strong>W(精度,~40 分)</strong> ← 模块 03 训练(<code>distill_truth.py</code> / <code>distill_scnet.py</code>)。</li>
+    <li><strong>U(参数+显存,~40 分)</strong> ← 学生小(5.19M)+ fp16/INT8 权重存储 + matrix-core 省 Tensile 155MiB + 流式分块降激活峰值。</li>
+    <li><strong>V(时延,~20 分)</strong> ← 模块 01 的 CppRunner 全 HIP 前向(matrix-core GEMM + flash 注意力 + 快 recovery)。</li>
+  </ul>
+  <p style="margin-top:6px;font-size:14.5px;color:var(--muted);">口径说明:提交包内 <code>优化说明文档.md</code> 记录的是较早的"纯 PyTorch fp16"基线(官方 15 指标口径 W=35.63 / 总分 94.04);本目录收的是在其之上叠加 <strong>bo3b 权重 + matrix-core 库 + FAST_STREAM</strong> 的更高分路径。数字以你在 DCU 上 <code>score15_dcu.py</code> 实测为准。</p>
+</div>
+
+<h2 class="chap" id="flow"><span class="cn">图</span>运行依赖关系图<a href="#top" class="backtop">↑</a></h2>
+<div class="diagram">推理(评测时跑这条):
+  inference.py ──加载──> data/checkpoints/student.pth  (bo3b 权重, 需下载)
+       │ import
+       ├──> maxvit3d_student.py   (学生模型结构定义, 提供权重张量 + mem_opt forward)
+       └──> maxvit3d_cpp.py (CppRunner) ──ctypes──> libgemm.so      (matrix-core GEMM/LN/SwiGLU)
+                                          └─ctypes──> libflashattn.so (flash 注意力 + RMSNorm)
+
+matrix-core 库怎么来:
+  gemm_lib_mmac.hip ──hipcc -shared──> libgemm.so
+       ↑ 布局来自:mmac_probe/layout/frag/solve/verify(逆向 v_mmac fragment 寄存器布局)
+       ↑ 指令确认:isa_probe.sh + gcn_decode.py/gcn_scan.py(反汇编看 gfx936 发什么指令)
+
+训练(产出 student.pth):
+  distill_truth.py / distill_scnet.py ──蒸馏+真值监督──> student_*.pth
+       │ import maxvit3d_student.py(同一个结构文件)
+       └ 教师 = 官方 Pangu(model_bak.pth, 冻结)
+
+评测(判优/打分):
+  score15_dcu.py(DCU+matrix-core 口径) / score15_fp32.py(纯fp32最准口径) / result.py(官方脚本)</div>
+
+<h2 class="chap" id="tree"><span class="cn">树</span>目录结构<a href="#top" class="backtop">↑</a></h2>
+<div class="diagram">最优项目代码/
+├── INDEX.html                  ← 本文件(索引)
+├── 01_推理部署/                 V+U:在 DCU 上跑最快最省的前向
+│   ├── inference.py            推理入口(FAST_STREAM + ENC_FP32 + CppRunner)
+│   ├── maxvit3d_cpp.py         CppRunner:全 HIP/hipBLAS 路由前向编排
+│   ├── maxvit3d_student.py     学生 MaxViT-3D 结构(训练/推理共用)
+│   ├── libgemm.so              matrix-core GEMM 库(v_mmac, 无 rocBLAS)
+│   ├── libflashattn.so         flash 窗口注意力 + RMSNorm 库
+│   ├── conf/config.yaml        数据管线/通道/归一化/img_size 配置
+│   └── data/download_model_url.txt   学生权重下载链接(student.pth 不在包内)
+├── 02_matrix_core_HIP/         U:手写 v_mmac 矩阵核 + 逆向破解全过程
+│   ├── gemm_lib_mmac.hip ★     生产版库源码(编出 libgemm.so)
+│   ├── gemm_mmac.hip~4.hip     从基础到 LDS-tiled/双缓冲/寄存器预取的迭代
+│   ├── gemm_wint8.hip          仅权重 INT8 矩阵核(再省权重显存)
+│   ├── mmac_probe/layout/frag/solve/verify/brute/btile.hip  fragment 布局逆向探针组
+│   ├── gcn_decode.py gcn_scan.py   反汇编 .text 指令分类解码
+│   ├── isa_probe.sh            探 gfx936 支持哪些矩阵/点积指令
+│   ├── gemm_lib.hip            rocBLAS/hipBLAS 版(对照基线)
+│   └── gemm_bench.hip          手写 vs rocBLAS 计时对拍
+├── 03_训练/                    W:蒸馏 + 真值监督
+│   ├── distill_truth.py ★      真值监督蒸馏(温度通道破天花板,abc66 取回)
+│   ├── distill_scnet.py        蒸馏训练主脚本(双监督+EMA+早停)
+│   └── distill_train.py        蒸馏精简脚本(快速复现/smoke)
+├── 04_评测/                    打分判优
+│   ├── score15_fp32.py         官方15指标 W,纯 fp32(最准判优口径)
+│   ├── score15_dcu.py          DCU+matrix-core fast_forward 口径(最接近评测)
+│   ├── score15_diff.py         逐通道对比(找哪些通道涨/跌)
+│   └── result.py               官方评估/可视化脚本
+└── 05_参考文档/
+    ├── README.md               提交包说明(声明+运行)
+    └── 优化说明文档.md           技术报告(94.04 基线口径)</div>
+
+<h2 class="chap" id="env"><span class="cn">备</span>先决条件 · 上机环境<a href="#top" class="backtop">↑</a></h2>
+<div class="box r">
+  <div class="h">注意:学生权重与数据不在本文件夹</div>
+  <p><code>student.pth</code>(bo3b 权重)、ERA5 数据、教师 <code>model_bak.pth</code>、归一化统计/静态场都不在本包(太大/官方提供)。学生权重用 <code>01_推理部署/data/download_model_url.txt</code> 里的 <code>curl</code> 命令下载;数据/教师在各机的官方数据目录。</p>
+</div>
+<ul>
+  <li><strong>SCNet 海光 DCU(跑推理/评测/编 HIP)</strong>:登录节点 <code>zzeshell</code> → <code>squeue</code> 找计算节点 → <code>ssh</code> 宿主机。宿主机直接能编 HIP(<code>/opt/dtk*/bin/hipcc</code>);要 torch/onescience 进容器 <code>sudo /usr/bin/ai_docker exec -i &lt;容器&gt; bash -l</code>。文件走 <code>/public</code>(NFS)。提交工作目录约定 <code>/public/home/xdzs2026_c296/submit_pw</code>。</li>
+  <li><strong>abc66(预研/训练,2×RTX5090)</strong>:Tailscale <code>ssh abc66</code> 或助手 <code>python _abc66.py run/put/get</code>;env <code>onescience311</code>。</li>
+  <li><strong>conda</strong>:用各机现成 env,<span class="hl">别 <code>pip install torch</code></span>(覆盖 DTK 定制版会让 DCU 调不起来)。</li>
+</ul>
+
+<!-- ============================ 模块 01 ============================ -->
+<h2 class="chap" id="m1"><span class="cn">01</span>推理部署模块(V 时延 + U 显存)<a href="#top" class="backtop">↑</a></h2>
+<p class="chap-intro">评测时真正执行的就是这一组。<code>inference.py</code> 是入口,它 import 结构文件 <code>maxvit3d_student.py</code> 重建模型、加载 bo3b 权重,然后用 <code>maxvit3d_cpp.py</code> 的 CppRunner 把前向全部路由到两个 HIP 库去算。</p>
+
+<div class="file" id="f-inference">
+  <div class="top"><div class="fn">inference.py</div><div class="tag star">推理入口</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>提交_pangu_weather/pangu_weather/inference.py</code></span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v">黑盒评测推理入口。顶部用环境变量定档:<code>FAST_STREAM=1</code>(输入流式+recovery offload,GPU 峰值~566MiB)、<code>ENC_FP32=1</code>(enc 混合精度避 NaN)、<code>N_TILES</code>(stem/recovery 分块数)。读 <code>conf/config.yaml</code> + 官方归一化/静态场 → 建数据管线 → 加载 <code>student.pth</code>(从内嵌 <code>cfg</code> 重建结构)→ <code>set_sdpa(False)</code> → 构 CppRunner → 计时区严格按官方(<code>model</code> 前后 <code>torch.cuda.synchronize()</code>,标 AI4S 不可改)→ 输出 <code>result/output/*.npy</code> + <code>result/time_record.json</code>。CppRunner 加载失败会优雅回退 torch 前向不崩。</span></div>
+    <div class="row"><span class="lbl use">怎么调用</span></div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash · DCU 容器内</span></div><code><span class="c"># 在 submit_pw 目录(含 conf/ data/ 三个 .py + 两个 .so)</span>
+<span class="c"># 默认就是最优档(FAST_STREAM=1 ENC_FP32=1),直接:</span>
+python inference.py
+<span class="c"># 想调档对比(找 V 不超阈值 + U 最低的点):</span>
+N_TILES=8 FAST_STREAM=0 python inference.py     <span class="c"># 628 档(V 最安全)</span>
+FAST_STREAM=1 NREC=16 NC_IN=8 python inference.py  <span class="c"># 566 档(U 最低)</span></code></pre>
+  </div>
+</div>
+
+<div class="file" id="f-cpp">
+  <div class="top"><div class="fn">maxvit3d_cpp.py</div><div class="tag star">全HIP编排 CppRunner</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>提交_pangu_weather/pangu_weather/maxvit3d_cpp.py</code></span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v">复刻 <code>maxvit3d_student.py</code> 的 mem_opt 前向,但把所有 compute(Linear/注意力/RMSNorm/LayerNorm/SwiGLU)换成 ctypes 调 <code>libgemm.so</code> / <code>libflashattn.so</code> 的 HIP kernel,消掉 torch mm/bmm/norm 的首次懒加载 + 稳态更快 + 激活峰值更低。reshape 仍用 torch view(bit-exact)。提供:<code>linear/rmsnorm/layernorm/swiglu_w/attention_window</code> 算子封装;<code>partition/reverse</code> 窗口重排;<code>CppRunner</code> 类(<code>init()</code> 在计时区外做 <code>gemm_init</code>+微 warmup;<code>__call__</code>=628 档前向;<code>fast_forward</code>=566 流式档);FAST_STREAM 的 <code>prepack_input/fast_make_buffers/reassemble_fast</code> 在计时区外做数据准备/重组。</span></div>
+    <div class="row"><span class="lbl use">怎么调用</span></div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">python · import 用法</span></div><code><span class="k">from</span> maxvit3d_cpp <span class="k">import</span> CppRunner
+runner = CppRunner(model)   <span class="c"># model 是已 load_state_dict 的 MaxVit3DStudent(eval)</span>
+runner.init()               <span class="c"># gemm_init + warmup(计时区外,一次)</span>
+out_s, out_u = runner(invar_fp16)   <span class="c"># 628 档:与 model(invar) bit-exact</span>
+<span class="c"># 566 流式档:</span>
+buf_s, buf_u = maxvit3d_cpp.fast_make_buffers(16)
+pk = maxvit3d_cpp.prepack_input(x_cpu_fp16)
+ms, mu = runner.fast_forward(pk, buf_s, buf_u)</code></pre>
+  </div>
+</div>
+
+<div class="file" id="f-student">
+  <div class="top"><div class="fn">maxvit3d_student.py</div><div class="tag">学生模型结构</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>提交_pangu_weather/pangu_weather/maxvit3d_student.py</code>(各训练机/SCNet 同名同结构)</span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v">学生 MaxViT-3D 定义。U 形多尺度骨干 + 局部 block 窗口注意力 + 全局支路(<code>global_mode</code> 三选一:grid 等距稀疏 / spectral 频域 / fpa 原型自适应,默认 grid)。组件:QK-Norm(余弦注意力+每头温度)、RMSNorm、SwiGLU、LayerScale、DropPath;stem/head 复用官方 PanguEmbedding/Recovery(自动探 unified/split API)。提供 <code>set_sdpa()</code> 开关、eval 默认开的 <code>mem_opt</code> 空间分块 forward(bit-exact 省显存)。训练和推理都 import 它。</span></div>
+    <div class="row"><span class="lbl use">怎么调用</span></div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">python</span></div><code><span class="k">import</span> maxvit3d_student <span class="k">as</span> M; M.set_sdpa(<span class="k">False</span>)
+<span class="k">from</span> maxvit3d_student <span class="k">import</span> MaxVit3DStudent
+model = MaxVit3DStudent(patch_size=(2,16,16), embed_dim=96,
+          depths=(2,4,2), num_heads=(6,12,6), global_mode=<span class="s">"grid"</span>, mlp_ratio=2.0)</code></pre>
+  </div>
+</div>
+
+<div class="file" id="f-libgemm">
+  <div class="top"><div class="fn">libgemm.so &nbsp;+&nbsp; libflashattn.so</div><div class="tag">预编译 HIP 库</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>提交_pangu_weather/pangu_weather/*.so</code>(libgemm.so 由 <code>02_matrix_core_HIP/gemm_lib_mmac.hip</code> 编出;libflashattn.so 由开发目录 hip 的 flash 核编出)</span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v"><code>libgemm.so</code> 暴露 <code>gemm_init / gemm_linear_fp16 / layernorm_fp16 / swiglu_fp16</code>(matrix-core v_mmac GEMM + 归一化/门控);<code>libflashattn.so</code> 暴露 <code>flash_qkv_launch_h / rmsnorm_launch_h</code>。CppRunner 用 ctypes 直接调,传 <code>tensor.data_ptr()</code> + 当前 stream。<span class="hl">这两个 .so 是平台相关二进制,换 DCU 环境/DTK 版本最好用源码重编。</span></span></div>
+    <div class="row"><span class="lbl use">怎么重编 libgemm.so</span></div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash · DCU 宿主机</span></div><code>hipcc -O3 -shared -fPIC --offload-arch=gfx936 \
+      gemm_lib_mmac.hip -o libgemm.so</code></pre>
+  </div>
+</div>
+
+<div class="file" id="f-conf">
+  <div class="top"><div class="fn">conf/config.yaml &nbsp;·&nbsp; data/download_model_url.txt</div><div class="tag">配置 + 权重链接</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>提交_pangu_weather/pangu_weather/conf/config.yaml</code> 与 <code>data/download_model_url.txt</code></span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v"><code>config.yaml</code>:数据管线配置(69 通道列表 + 逐通道 weights + 归一化/静态场路径 + <code>img_size=[721,1440]</code> + test_ratio 占位年份)。<code>download_model_url.txt</code>:一条 <code>curl</code> 命令,下载 <code>checkpoints.zip</code>(内含学生权重 student.pth)。</span></div>
+    <div class="row"><span class="lbl use">怎么用</span></div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash</span></div><code><span class="c"># 下载并解压学生权重到 data/checkpoints/</span>
+bash data/download_model_url.txt   <span class="c"># 或直接 curl ...(文件里那条命令)</span>
+unzip checkpoints.zip -d data/</code></pre>
+  </div>
+</div>
+
+<!-- ============================ 模块 02 ============================ -->
+<h2 class="chap" id="m2"><span class="cn">02</span>matrix-core HIP 模块(U 显存 · 手写 v_mmac)<a href="#top" class="backtop">↑</a></h2>
+<p class="chap-intro">本项目最硬核的一块:发现海光 gfx936 的矩阵核指令是 <code>v_mmac</code>(不是 AMD 的 v_mfma),通过反汇编 + 独热探针逆向出 fragment 寄存器布局,手写出 bit-exact 的矩阵核 GEMM 库替掉 rocBLAS——关键收益是 <code>gemm_init</code> 不加载 Tensile 库省约 155MiB 显存。下面按"生产库 → 迭代历程 → 逆向探针 → 反汇编工具 → 对照基线"排列。</p>
+
+<div class="file" id="f-gemmlibmmac">
+  <div class="top"><div class="fn">gemm_lib_mmac.hip</div><div class="tag star">生产版 matrix-core 库</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>cpp_stage1/gemm_lib_mmac.hip</code></span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v">编出最优分用的 <code>libgemm.so</code>。核心是 <code>mmac_gemm</code> 模板核:LDS-tiled、用 <code>__builtin_amdgcn_mmac_f32_16x16x16f16</code> 做 16×16×16 矩阵乘(fp16 输入 / fp32 累加),按实测逆向的 fragment 布局(<code>lane L: r=L%16, g=L/16; a_frag[i]=A[r][g*4+i]; C acc[i]=C[r][g+i*4]</code>)。<code>gemm_linear_fp16</code> 按 (M,N,K) 形状选最优 tile(极小 M 用 32×32、大 N 用 128×256、通用 64×64)。<span class="hl"><code>gemm_init</code> 故意不调 <code>rocblas_initialize</code> → 不加载 Tensile → 省 155MiB</span>,只用极小张量 warmup 触发模板核懒加载。另含沿用的 layernorm/swiglu 核。</span></div>
+    <div class="row"><span class="lbl use">怎么调用</span></div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash · 编译并替换</span></div><code>hipcc -O3 -shared -fPIC --offload-arch=gfx936 gemm_lib_mmac.hip -o libgemm.so
+cp libgemm.so /path/to/submit_pw/libgemm.so   <span class="c"># CppRunner 自动从同目录加载</span></code></pre>
+  </div>
+</div>
+
+<div class="file" id="f-mmaciter">
+  <div class="top"><div class="fn">gemm_mmac.hip · gemm_mmac2/3/4.hip</div><div class="tag">优化迭代历程</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>cpp_stage1/gemm_mmac{,.2,.3,.4}.hip</code></span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v">矩阵核 GEMM 从能跑到追平 rocBLAS 的演进,讲义里逐版讲优化思路:<code>gemm_mmac.hip</code>=v1 正确性优先(1 wave/block,直接 global 读 fragment);<code>gemm_mmac2.hip</code>=LDS-tiled 复用;<code>gemm_mmac3.hip</code>=LDS 双缓冲 + 大 tile;<code>gemm_mmac4.hip</code>=寄存器级 fragment 预取 + 深 K-unroll。最终产线版即 <code>gemm_lib_mmac.hip</code>。</span></div>
+    <div class="row"><span class="lbl use">怎么用</span><span class="v">学习/对比用,可单独编译跑 self-test:<code>hipcc -O3 --offload-arch=gfx936 gemm_mmac2.hip -o t &amp;&amp; ./t</code>。</span></div>
+  </div>
+</div>
+
+<div class="file" id="f-wint8">
+  <div class="top"><div class="fn">gemm_wint8.hip</div><div class="tag">仅权重 INT8 矩阵核</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>cpp_stage1/gemm_wint8.hip</code></span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v">权重 INT8 量化版 GEMM:W 存 <code>int8[N,K]</code> + per-N-channel scale,kernel 载入 LDS 时反量化 int8→fp16(×scale)再走 v_mmac;A 保 fp16、matmul 全 fp16 → 近无损(对应"权重 INT8 per-channel +0.08%")。再省权重显存约 97MiB,是 U 的进一步杠杆。</span></div>
+    <div class="row"><span class="lbl use">怎么用</span><span class="v">同样 <code>hipcc -shared -fPIC --offload-arch=gfx936</code> 编成库,需配套把权重量化成 int8 + scale 后传指针。属进阶可选项。</span></div>
+  </div>
+</div>
+
+<div class="file" id="f-probe">
+  <div class="top"><div class="fn">mmac_probe / layout / frag / solve / verify / brute / btile.hip</div><div class="tag">fragment 布局逆向探针组</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>cpp_stage1/mmac_*.hip</code>(7 个)</span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v">破解 <code>v_mmac</code> 操作数/累加器寄存器布局的全过程(讲义讲"怎么逆向硬件指令"):
+      <ul style="margin:6px 0 0;">
+        <li><code>mmac_probe.hip</code>:验证指令存在 + 测峰值算力(纯寄存器反复 v_mmac,无访存)。</li>
+        <li><code>mmac_verify.hip</code>:A=B=全1 → C 每元素=16,确认是 16-deep 点积;再用结构化输入推映射。</li>
+        <li><code>mmac_layout.hip</code>:喂"单热点"(只设某一 lane/槽=特殊值),看 C 哪些位置变 → 反推映射。</li>
+        <li><code>mmac_frag.hip</code> / <code>mmac_solve.hip</code>:用受控/独热 A、B 对比 CPU 真值,自动推断 a_frag/b_frag/c_frag 的 lane→(行,列) 映射。</li>
+        <li><code>mmac_brute.hip</code>:暴力搜布局组合找 bit-exact 那一组。</li>
+        <li><code>mmac_btile.hip</code>:专解 B fragment(B=单位阵,C 应=A)。</li>
+      </ul></span></div>
+    <div class="row"><span class="lbl use">怎么用</span><span class="v">逐个 <code>hipcc -O3 --offload-arch=gfx936 mmac_solve.hip -o t &amp;&amp; ./t</code>,看打印的布局结论。这些是"做出 gemm_lib_mmac.hip 之前"的探路代码。</span></div>
+  </div>
+</div>
+
+<div class="file" id="f-decode">
+  <div class="top"><div class="fn">gcn_decode.py · gcn_scan.py · isa_probe.sh</div><div class="tag">反汇编 / 指令探测</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>cpp_stage1/gcn_decode.py · gcn_scan.py · isa_probe.sh</code></span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v"><code>isa_probe.sh</code>:用 hipcc 内联汇编逐条试 gfx936 支不支持某矩阵/点积指令(v_pk_fma_f16 / v_dot* / v_mfma* …),回答"rocBLAS 的算力来自哪种指令"。<code>gcn_decode.py</code>:对 kernel 的 <code>.text</code> 二进制做 GCN5 指令分类解码,统计 VOP3P(packed fp16 FMA / dot / mfma)、VALU、LDS、访存占比。<code>gcn_scan.py</code>:位置无关扫描,统计关键 FMA 指令出现频次。</span></div>
+    <div class="row"><span class="lbl use">怎么用</span></div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash · DCU 宿主机</span></div><code>bash isa_probe.sh                       <span class="c"># 看哪些指令编译通过</span>
+<span class="c"># 先反汇编出 .text 再解码:</span>
+hipcc --offload-arch=gfx936 -c gemm_mmac.hip -o k.o
+roc-obj-extract / llvm-objdump -d k.o > k.txt  <span class="c"># (取 .text 段)</span>
+python gcn_decode.py k.bin                <span class="c"># 指令分类统计</span>
+python gcn_scan.py  k.bin                 <span class="c"># FMA 指令频次</span></code></pre>
+  </div>
+</div>
+
+<div class="file" id="f-rocblas">
+  <div class="top"><div class="fn">gemm_lib.hip · gemm_bench.hip</div><div class="tag">rocBLAS 对照基线</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>cpp_stage1/gemm_lib.hip · gemm_bench.hip</code></span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v"><code>gemm_lib.hip</code>:用 hipBLAS/rocBLAS 实现同接口 GEMM(<code>gemm_init</code> 调 <code>rocblas_initialize</code> 把 Tensile 懒加载移到计时区外消首样本 3.5s)——这是手写 matrix-core 版的对照,也是"如果不想手写就用库"的稳妥退路。<code>gemm_bench.hip</code>:手写核 vs rocBLAS 逐 variant 计时 + 结果对拍(max abs diff),证明手写 bit-exact 且不慢。</span></div>
+    <div class="row"><span class="lbl use">怎么用</span><span class="v"><code>hipcc -O3 --offload-arch=gfx936 gemm_bench.hip -lrocblas -o bench &amp;&amp; ./bench</code>。</span></div>
+  </div>
+</div>
+
+<!-- ============================ 模块 03 ============================ -->
+<h2 class="chap" id="m3"><span class="cn">03</span>训练模块(W 精度 · 蒸馏 + 真值监督)<a href="#top" class="backtop">↑</a></h2>
+<p class="chap-intro">产出学生权重 <code>student.pth</code> 的脚本。三者都 import 同一个 <code>maxvit3d_student.py</code> 结构、都以官方 Pangu(冻结)为教师。<code>distill_truth.py</code> 是最优 bo3b 权重那条线(真值监督破天花板)。</p>
+
+<div class="file" id="f-truth">
+  <div class="top"><div class="fn">distill_truth.py</div><div class="tag star">真值监督蒸馏(bo3b)</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>abc66:/data2/pangu/distill_truth.py</code>(已用 <code>_abc66.py get</code> 取回)</span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v">破纯蒸馏天花板:对<strong>温度通道</strong>(2m_t + temperature_1000/925/850)用 <code>loss = α·教师 + (1-α)·真值</code>,其余通道纯教师蒸馏(纯蒸馏学生永远 ≤ 教师拿不到满分;真值监督让温度直降方差可超教师)。数据=连续 ERA5(相邻 6h=t→t+6h 真值对)。含落盘缓存 <code>DiskList</code>(规避 RAM 上限上全量)、纬度加权 L1、可选高频谱损失 <code>hf_spec_loss</code>(治 patch16 过平滑)、可选物理头(<code>--phys</code>)。<span class="hl">补充训练一律 <code>--resume</code> 从已存权重续,绝不从头。</span></span></div>
+    <div class="row"><span class="lbl use">怎么调用</span></div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash · abc66 onescience311</span></div><code>PBASE=/data2/pangu/era5_cont \
+PSTATS=/data2/pangu/xiandao2026-AI4S/onedatasets/ERA5_test \
+PMETA=/data2/pangu/era5_seed/assets/era5_real_meta.json \
+PCKPT=/data2/pangu/xiandao2026-AI4S/pangu_weather/data/checkpoints/model_bak.pth \
+python distill_truth.py --years 1980 --epochs 30 --truth-alpha 0.5 \
+       --amp bf16 --resume &lt;上次ckpt.pth&gt; --save out.pth</code></pre>
+  </div>
+</div>
+
+<div class="file" id="f-scnet">
+  <div class="top"><div class="fn">distill_scnet.py</div><div class="tag">蒸馏训练主脚本</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>提交_pangu_weather/pangu_weather/distill_scnet.py</code></span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v">完整蒸馏训练:<code>loss = α·蒸馏(对教师) + (1-α)·真值</code>双监督;AdamW + warmup 余弦 + 梯度裁剪 + EMA(0.999) + bf16 自动混精 + 梯度检查点 + 双指标早停(<code>val_gtL1</code> 对真值 / <code>val_match</code> 对教师)+ 最优 ckpt 保存。自适配 SCNet/abc66 的 onescience API。</span></div>
+    <div class="row"><span class="lbl use">怎么调用</span></div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash · pangu_weather/ 目录</span></div><code>python distill_scnet.py --embed 96 --depths 2,4,2 --heads 6,12,6 \
+       --patch 2,16,16 --global-mode grid --mlp-ratio 2.0 --epochs 120 --alpha 0.5</code></pre>
+  </div>
+</div>
+
+<div class="file" id="f-dtrain">
+  <div class="top"><div class="fn">distill_train.py</div><div class="tag">精简/快速复现</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>提交_pangu_weather/pangu_weather/distill_train.py</code></span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v">蒸馏精简脚本(深监督 DTP 双损失),数据/掩膜/损失完全沿用官方 <code>train.py</code> 口径(ERA5Datapipe + 3 静态掩膜插第 4 位 + 加权 L1)。便于快速跑通流程 / smoke 测。</span></div>
+    <div class="row"><span class="lbl use">怎么调用</span></div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash</span></div><code><span class="c"># smoke(5 个 iter 验证能跑):</span>
+python distill_train.py --embed 96 --depths 1,3,1 --heads 6,12,6 --epochs 1 --max-iters 5</code></pre>
+  </div>
+</div>
+
+<!-- ============================ 模块 04 ============================ -->
+<h2 class="chap" id="m4"><span class="cn">04</span>评测打分模块<a href="#top" class="backtop">↑</a></h2>
+<p class="chap-intro">判优(选哪个权重)与最终打分。判优铁律:看对真值的官方 15 指标 W,别只看对教师的 val_match。</p>
+
+<div class="file" id="f-score15">
+  <div class="top"><div class="fn">score15_fp32.py · score15_dcu.py · score15_diff.py</div><div class="tag star">W 判优 harness</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>cpp_stage1/score15_{fp32,dcu,diff}.py</code></span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v">都按官方 15 个气象指标 + W 公式(vs 教师 Pangu)算分,口径不同:
+      <ul style="margin:6px 0 0;">
+        <li><code>score15_fp32.py</code>:纯 fp32 forward(bo3b 在 fp16 会 NaN,fp32 finite),<strong>W 判优最准</strong>。在 era5_real/2000 跑。</li>
+        <li><code>score15_dcu.py</code>:用 CppRunner <code>fast_forward</code> + matrix-core libgemm + 正确归一化,<strong>最接近真实评测口径</strong>;可指定 libgemm.so。</li>
+        <li><code>score15_diff.py</code>:逐通道对比 W1 vs bo3b vs 教师,找哪些通道涨/跌,指导下一步训练方向。</li>
+      </ul></span></div>
+    <div class="row"><span class="lbl use">怎么调用</span></div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash · DCU(submit_pw 目录)</span></div><code>python score15_fp32.py data/checkpoints/student.pth          <span class="c"># 最准 fp32 判优</span>
+python score15_dcu.py  data/checkpoints/student.pth libgemm.so <span class="c"># 评测口径</span>
+python score15_diff.py w1.pth bo3b.pth                        <span class="c"># 逐通道差异</span></code></pre>
+  </div>
+</div>
+
+<div class="file" id="f-result">
+  <div class="top"><div class="fn">result.py</div><div class="tag">官方评估/可视化</div></div>
+  <div class="body">
+    <div class="row"><span class="lbl loc">原位置</span><span class="v"><code>提交_pangu_weather/pangu_weather/result.py</code></span></div>
+    <div class="row"><span class="lbl fun">干啥</span><span class="v">官方评估与可视化脚本(读 <code>result/output/*.npy</code> + 真值算指标、出图)。提交时按官方口径核验用。</span></div>
+    <div class="row"><span class="lbl use">怎么调用</span><span class="v"><code>python result.py</code>(先跑过 <code>inference.py</code> 生成 output)。</span></div>
+  </div>
+</div>
+
+<!-- ============================ 模块 05 ============================ -->
+<h2 class="chap" id="m5"><span class="cn">05</span>参考文档<a href="#top" class="backtop">↑</a></h2>
+<ul>
+  <li><code>05_参考文档/README.md</code> —— 提交包说明:第三方库声明、学术诚信、目录结构、运行说明。</li>
+  <li><code>05_参考文档/优化说明文档.md</code> —— 技术报告:轻量化方法、设计思路、性能优化表、实验结果(94.04 基线口径,15 指标逐项)、代码模块说明、编译/运行。<strong>注:这是较早纯 PyTorch 基线的写法,matrix-core + bo3b 的更高分路径以本索引 + score15 实测为准。</strong></li>
+</ul>
+
+<!-- ============================ Quickstart ============================ -->
+<h2 class="chap" id="quick"><span class="cn">跑</span>一页跑通 · Quickstart<a href="#top" class="backtop">↑</a></h2>
+<div class="box g">
+  <div class="h">A. 推理 + 打分(在 SCNet DCU 容器内)</div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash</span></div><code><span class="c"># 0) 进 DCU 容器(登录节点→squeue找节点→ssh宿主机→ai_docker exec)</span>
+<span class="c"># 1) 工作目录备齐:3 个 .py + 2 个 .so + conf/ + data/checkpoints/student.pth</span>
+bash data/download_model_url.txt &amp;&amp; unzip checkpoints.zip -d data/   <span class="c"># 取学生权重</span>
+<span class="c"># 2) (可选)重编 matrix-core 库</span>
+hipcc -O3 -shared -fPIC --offload-arch=gfx936 gemm_lib_mmac.hip -o libgemm.so
+<span class="c"># 3) 推理(默认最优档 FAST_STREAM=1 ENC_FP32=1)</span>
+python inference.py
+<span class="c"># 4) 打分</span>
+python score15_dcu.py data/checkpoints/student.pth libgemm.so</code></pre>
+</div>
+<div class="box b">
+  <div class="h">B. 复现/补充训练(在 abc66)</div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash</span></div><code>ssh abc66; conda activate onescience311; cd /data2/pangu
+PBASE=/data2/pangu/era5_cont PSTATS=.../ERA5_test PMETA=.../era5_real_meta.json \
+PCKPT=.../model_bak.pth \
+screen -dmS train python distill_truth.py --years 1980 --epochs 30 \
+       --truth-alpha 0.5 --amp bf16 --resume &lt;上次ckpt&gt; --save out.pth
+<span class="c"># 后台必须 screen/tmux,断线才不掉(nohup 在某些实例会被杀)</span></code></pre>
+</div>
+
+<footer>
+  <p><strong>第一步交付完成:最优项目核心代码已收齐 35 个文件到本文件夹(5 个模块子目录),每个文件标注了原位置 / 功能 / 调用方式。</strong></p>
+  <p style="color:var(--faint);font-size:13px;">先导杯 AI4S 复赛备战 · 最优项目代码索引 v1 · 盘古轻量化 + 海光 DCU matrix-core 部署。下一步:按推理 / matrix-core / 训练 / 评测分课做逐代码 HTML 讲义。</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

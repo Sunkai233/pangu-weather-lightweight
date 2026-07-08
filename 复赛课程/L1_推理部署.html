@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L1 · 推理部署逐代码 · inference.py + maxvit3d_cpp.py(CppRunner 全 HIP 前向)</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --muted:#3a352f; --faint:#5a5248; --line:#e0d8c8;
+    --paper:#ffffff; --paper2:#f7f5f0; --bg:#faf8f3;
+    --accent:#8a4f2d; --accent-soft:#f3ebe2; --accent-line:#dcc9b5;
+    --blue:#1c5f7a; --blue-soft:#eaf3f7; --blue-line:#bcd9e6;
+    --green:#2e6b3e; --green-soft:#ecf6ee; --green-line:#bfe0c6;
+    --amber:#8a5a10; --amber-soft:#fbf2df; --amber-line:#ecd7a8;
+    --red:#9a2f22; --red-soft:#fbeae6; --red-line:#ecc3b8;
+    --indigo:#473c78; --indigo-soft:#eeebf6; --indigo-line:#cdc5e6;
+    --code-bg:#f7f5f0;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:"Noto Serif SC","Songti SC",Georgia,"Microsoft YaHei",serif;
+        font-size:16.5px; line-height:1.85; -webkit-font-smoothing:antialiased; }
+  .layout{ display:flex; max-width:1280px; margin:0 auto; }
+  nav{ position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
+       width:280px; min-width:280px; padding:28px 16px 60px; background:var(--paper);
+       border-right:1px solid var(--line); font-size:13.5px; font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  nav .navtitle{ font-weight:800; font-size:15px; color:var(--accent); margin-bottom:2px; }
+  nav .navsub{ color:var(--faint); font-size:11.5px; margin-bottom:14px; }
+  nav a{ display:block; color:var(--muted); text-decoration:none; padding:3px 9px; border-radius:7px; border-left:2px solid transparent; }
+  nav a:hover{ background:var(--accent-soft); color:var(--accent); }
+  nav a.chap{ font-weight:700; color:var(--ink); margin-top:12px; }
+  nav a.sub{ padding-left:20px; font-size:12px; color:var(--faint); }
+  main{ flex:1; min-width:0; padding:44px 52px 120px; background:var(--paper); }
+  @media (max-width:1000px){ nav{ display:none; } main{ padding:28px 18px 70px; } body{ font-size:16px; } }
+  header.doc{ border-bottom:2px solid var(--accent-line); padding-bottom:22px; margin-bottom:8px; }
+  header.doc .kicker{ display:inline-block; background:var(--accent); color:#fff; font-size:12px;
+       font-weight:700; letter-spacing:1px; padding:4px 13px; border-radius:20px; font-family:sans-serif; }
+  header.doc h1{ font-size:29px; line-height:1.34; margin:15px 0 10px; letter-spacing:.3px; }
+  header.doc .lead{ color:var(--muted); font-size:16.5px; max-width:850px; }
+  header.doc .how{ margin-top:16px; background:var(--paper2); border:1px solid var(--line);
+       border-radius:12px; padding:13px 17px; font-size:14.5px; color:var(--muted); }
+  h2.chap{ font-size:24px; margin:52px 0 6px; padding-top:16px; border-top:1px dashed var(--line); letter-spacing:.3px; }
+  h2.chap .cn{ display:inline-block; background:var(--accent); color:#fff; font-size:14px; font-weight:800;
+       min-width:34px; height:34px; line-height:34px; text-align:center; border-radius:9px; margin-right:11px; vertical-align:middle; padding:0 7px; font-family:sans-serif; }
+  .chap-intro{ color:var(--muted); font-size:15.5px; margin:8px 0 4px; }
+  h3{ font-size:18.5px; margin:30px 0 8px; color:var(--ink); }
+  h4{ font-size:16px; margin:20px 0 6px; color:var(--accent); font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  p{ margin:10px 0; } strong{ color:var(--ink); font-weight:700; }
+  em{ font-style:normal; color:var(--amber); font-weight:700; }
+  ul,ol{ margin:9px 0; padding-left:24px; } li{ margin:5px 0; }
+  code{ font-family:"JetBrains Mono","Fira Code",Consolas,monospace; font-size:.85em;
+        background:#f0ebdd; color:#7a4520; padding:2px 6px; border-radius:5px; }
+  .box{ border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:10px;
+        padding:13px 18px; margin:16px 0; background:var(--paper); }
+  .box.g{ border-left-color:var(--green); background:var(--green-soft); }
+  .box.r{ border-left-color:var(--red); background:var(--red-soft); }
+  .box.a{ border-left-color:var(--amber); background:var(--amber-soft); }
+  .box.b{ border-left-color:var(--blue); background:var(--blue-soft); }
+  .box.ig{ border-left-color:var(--indigo); background:var(--indigo-soft); }
+  .box .h{ font-weight:800; margin-bottom:4px; font-size:15px; color:var(--accent); }
+  .box.g .h{ color:var(--green); } .box.r .h{ color:var(--red); } .box.a .h{ color:var(--amber); }
+  .box.b .h{ color:var(--blue); } .box.ig .h{ color:var(--indigo); }
+  .box p{ margin:6px 0; }
+  .lab{ border:1.5px solid var(--green-line); background:linear-gradient(180deg,#eefaf0,#fbfdfb);
+        border-radius:12px; padding:14px 18px 14px 52px; margin:18px 0; position:relative; }
+  .lab::before{ content:"🛠"; position:absolute; left:16px; top:13px; font-size:21px; }
+  .lab .lbl{ display:block; font-size:12.5px; font-weight:800; color:var(--green); letter-spacing:1px; margin-bottom:4px; font-family:sans-serif; }
+  pre{ background:#f7f5f0; border:1px solid #e0d8c8; border-radius:9px; padding:0; margin:12px 0; overflow:hidden; }
+  pre .bar{ display:flex; gap:6px; align-items:center; padding:7px 12px; background:#efe9df; border-bottom:1px solid #e0d8c8; }
+  pre .bar .dot{ width:10px; height:10px; border-radius:50%; } pre .bar .r{ background:#d96459; } pre .bar .y{ background:#c79a2e; } pre .bar .g{ background:#4fae5e; }
+  pre .bar .nm{ margin-left:6px; color:#5a5248; font-size:11.5px; font-family:"JetBrains Mono",monospace; }
+  pre code{ display:block; background:none; color:#1a1a1a; padding:14px 16px; font-size:12.9px; line-height:1.7; overflow-x:auto; }
+  pre code .c{ color:#555; font-style:italic; } pre code .k{ color:#0033aa; } pre code .s{ color:#006600; } pre code .f{ color:#005a7a; } pre code .n{ color:#6a1b9a; }
+  .hl{ background:#fbeec4; padding:0 4px; border-radius:4px; font-weight:700; }
+  .backtop{ display:inline-block; font-size:12px; color:var(--faint); text-decoration:none; float:right; margin-top:6px; font-family:sans-serif; }
+  table{ border-collapse:collapse; width:100%; margin:14px 0; font-size:14.5px; font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  th,td{ border:1px solid var(--line); padding:7px 11px; text-align:left; vertical-align:top; }
+  th{ background:var(--paper2); color:var(--accent); font-weight:700; }
+  tr:nth-child(even) td{ background:#fbf8f0; }
+  .src{ font-size:12.5px; color:var(--faint); margin:2px 0 0; font-family:sans-serif; }
+  footer{ margin-top:60px; padding-top:22px; border-top:2px solid var(--accent-line); color:var(--muted); font-size:14px; }
+  @media print{
+    nav{ display:none; } main{ padding:0; } body{ background:#fff; font-size:11.5pt; }
+    .box,.lab,pre,table{ break-inside:avoid; box-shadow:none; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav>
+  <div class="navtitle">L1 · 推理部署</div>
+  <div class="navsub">inference.py + CppRunner</div>
+  <a href="#intro">导读 · 这一课跑什么</a>
+  <a href="#chain">96.12 提升链 · 本课负责哪几分</a>
+  <a href="#run">先跑通(5 行命令)</a>
+  <a href="#c1" class="chap">1 · inference.py 逐段</a>
+  <a href="#c1-1" class="sub">1.1 顶部环境变量定档</a>
+  <a href="#c1-2" class="sub">1.2 加载权重 + 重建结构</a>
+  <a href="#c1-3" class="sub">1.3 构 CppRunner + 优雅降级</a>
+  <a href="#c1-4" class="sub">1.4 warmup + 后台预取</a>
+  <a href="#c1-5" class="sub">1.5 样本循环 + AI4S 计时区</a>
+  <a href="#c2" class="chap">2 · maxvit3d_cpp.py 逐段</a>
+  <a href="#c2-1" class="sub">2.1 ctypes 加载两个 .so</a>
+  <a href="#c2-2" class="sub">2.2 五个算子封装</a>
+  <a href="#c2-3" class="sub">2.3 CppRunner 预算 + init</a>
+  <a href="#c2-4" class="sub">2.4 前向编排(复刻结构)</a>
+  <a href="#c2-5" class="sub">2.5 流式 stem / recovery</a>
+  <a href="#c2-6" class="sub">2.6 ENC_FP32 混合精度</a>
+  <a href="#c2-7" class="sub">2.7 fast_forward 566 档</a>
+  <a href="#c3" class="chap">3 · 怎么改适配新方向</a>
+  <a href="#c4" class="chap">4 · 动手实践清单</a>
+  <a href="#sum" class="chap">小结</a>
+</nav>
+
+<main>
+
+<header class="doc" id="top">
+  <span class="kicker">复赛备战 · 逐代码讲义 L1 · 推理部署(V 时延 + U 显存)</span>
+  <h1>推理部署逐代码:把前向全程接到 HIP 上跑<br><span style="font-size:20px;color:var(--muted)">inference.py(入口/分档/计时) + maxvit3d_cpp.py(CppRunner 全 HIP 编排)</span></h1>
+  <p class="lead">这一课只讲两份文件,但它们是评测时<strong>真正执行</strong>的代码。我们逐段读:推理入口怎么定档、怎么加载权重、怎么把 torch 前向换成 HIP kernel(CppRunner)、怎么在计时区里只放该计时的东西、怎么优雅降级保证不崩。每段都给:<span style="color:var(--green);font-weight:700">这段干啥 → 项目哪用 → 怎么调用 → 怎么改</span>,配真实代码片段、调用命令、动手步骤。</p>
+  <div class="how"><strong>怎么读:</strong>代码框上方灰条是文件名 + 行号区间(对应 <code>最优项目代码/01_推理部署/</code> 里的文件)。遇到 <span style="color:var(--green);font-weight:700">🛠 动手实践</span> 框就照着敲一遍。本课假设你已看过课程总览,知道 U/V/W 三分制。</p>
+</header>
+
+<h2 class="chap" id="intro" style="border-top:none; margin-top:26px;"><span class="cn">读</span>导读:这一课跑什么<a href="#top" class="backtop">↑</a></h2>
+<p>评测脚本就一句 <code>python inference.py</code>。它会:读配置和数据 → 重建学生模型、加载 bo3b 权重 → 把模型交给 <strong>CppRunner</strong>(在 <code>maxvit3d_cpp.py</code>)→ CppRunner 把每一层的矩阵乘、注意力、归一化都换成我们手写的 HIP kernel 去算 → 在<strong>官方不可改的计时区</strong>里测单步时长 → 输出预报 <code>.npy</code> 和 <code>time_record.json</code>。</p>
+<div class="box ig">
+  <div class="h">一句话抓住这两份文件的分工</div>
+  <p><strong>inference.py = 总指挥</strong>:定档(开哪些优化)、加载、计时、优雅降级、存盘。<strong>maxvit3d_cpp.py(CppRunner)= 干活的</strong>:把 PyTorch 的前向<span class="hl">一比一复刻一遍,但所有计算走 HIP/hipBLAS kernel</span>,目标是和原 torch 前向 <em>bit-exact</em>(数值几乎一字不差),却更快、更省显存。</p>
+</div>
+
+<h2 class="chap" id="chain"><span class="cn">分</span>96.12 提升链 · 本课负责哪几分<a href="#top" class="backtop">↑</a></h2>
+<p>当前最优 <strong>96.1213 分</strong>(实测 U 38.4288 + V 18.9244 + W 38.4387)。它是一步步叠上来的,本课的 CppRunner / FAST_STREAM / ENC_FP32 是其中好几跳的功臣:</p>
+<table>
+  <tr><th>里程碑</th><th>分数</th><th>这一跳做了什么</th><th>属本课?</th></tr>
+  <tr><td>628 档 CppRunner</td><td>94.63</td><td>全 HIP 前向替 torch(V 大涨)</td><td>✅ 本课</td></tr>
+  <tr><td>双叠加 U</td><td>95.46</td><td>CPU offload + 混合精度 + V(+1.08)</td><td>✅ 本课</td></tr>
+  <tr><td>bo1 权重</td><td>95.60</td><td>W +0.20(训练侧,见 L3)</td><td>L3</td></tr>
+  <tr><td>bo3b 权重</td><td>95.79</td><td>W +0.19(真值监督,见 L3)</td><td>L3</td></tr>
+  <tr><td>matrix-core</td><td>96.06</td><td>弃 rocBLAS 省 ~121MiB,U +0.32(见 L2)</td><td>L2</td></tr>
+  <tr><td>per-shape-v3</td><td>96.12</td><td>按形状选 tile,V +0.07(见 L2)</td><td>L2</td></tr>
+</table>
+<p class="src">数字为用户实测。本课让你看懂"94.63 → 95.46"这两跳的代码;matrix-core(L2)和训练(L3)各有专课。</p>
+
+<h2 class="chap" id="run"><span class="cn">跑</span>先跑通(5 行命令,建立体感)<a href="#top" class="backtop">↑</a></h2>
+<p>先别管原理,先让它在 DCU 上动起来。前提:已进 SCNet DCU 容器、工作目录里有 <code>inference.py / maxvit3d_cpp.py / maxvit3d_student.py / libgemm.so / libflashattn.so / conf/ / data/</code>。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash · DCU 容器内 submit_pw 目录</span></div><code><span class="c"># 1) 取学生权重(student.pth → data/checkpoints/)</span>
+bash data/download_model_url.txt && unzip checkpoints.zip -d data/
+<span class="c"># 2) 直接推理(默认就是最优档 FAST_STREAM=1 ENC_FP32=1)</span>
+python inference.py
+<span class="c"># 3) 看输出</span>
+ls result/output/            <span class="c"># 每个测试样本一个 .npy 预报场</span>
+cat result/time_record.json  <span class="c"># 每个样本的单步时长(秒),V 分就看它</span></code></pre>
+<div class="lab"><span class="lbl">动手实践 0</span>跑完上面三步。记下 <code>time_record.json</code> 里的中位数时长(乘 1000 = 毫秒),和终端打印的 <code>✅ FAST_STREAM enabled</code> / <code>✅ CppRunner (HIP/hipBLAS) enabled</code>。这两行没出现就说明降级了(回退 torch),后面 1.3 节讲为什么。</div>
+
+<!-- ===================== 1 inference.py ===================== -->
+<h2 class="chap" id="c1"><span class="cn">1</span>inference.py 逐段讲解<a href="#top" class="backtop">↑</a></h2>
+<p class="chap-intro">文件位置:<code>最优项目代码/01_推理部署/inference.py</code>(233 行)。我们按执行顺序拆 5 块。</p>
+
+<h3 id="c1-1">1.1 顶部环境变量:一行一个"优化开关"</h3>
+<p><strong>这段干啥:</strong>在 <code>import torch</code> <em>之前</em>设好几个环境变量,等于给这次推理"定档"。为什么必须在 import 前?因为 <code>PYTORCH_CUDA_ALLOC_CONF</code> 只在首次 CUDA 分配前设置才生效。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">inference.py · L1–L9</span></div><code><span class="k">import</span> os
+<span class="c"># 显存优化(U):分配器可伸缩、回收碎片(实测整卡峰值显著降)。必须在 import torch 前设</span>
+os.environ.setdefault(<span class="s">"PYTORCH_CUDA_ALLOC_CONF"</span>, <span class="s">"expandable_segments:True"</span>)
+<span class="c"># stem/recovery 流式分块数。大→GPU峰值低但 launch 多(V慢);小→V快但峰值高</span>
+os.environ.setdefault(<span class="s">"N_TILES"</span>, <span class="s">"8"</span>)
+os.environ.setdefault(<span class="s">"FAST_STREAM"</span>, <span class="s">"1"</span>)   <span class="c"># 默认双叠加包:input流式 + recovery offload</span>
+os.environ.setdefault(<span class="s">"ENC_FP32"</span>, <span class="s">"1"</span>)      <span class="c"># enc 轻量混合精度(解锁高激活权重 bo1/bo3b,避 fp16 NaN)</span>
+<span class="k">import</span> torch</code></pre>
+<div class="box b">
+  <div class="h">四个开关分别管什么(记住这张表,改档就靠它)</div>
+  <ul style="margin:4px 0 0;">
+    <li><code>expandable_segments:True</code> —— 让显存分配器能回收碎片,降整卡峰值(U)。无脑开。</li>
+    <li><code>FAST_STREAM=1</code> —— 566 档:输入连续 chunk 流式进 GPU + recovery 流式 offload,GPU 峰值 ~566MiB。需要 CppRunner 可用。</li>
+    <li><code>ENC_FP32=1</code> —— enc 段用"轻量残差-fp32"混合精度,解锁高激活权重(否则 bo3b 在纯 fp16 会 NaN)。几乎免费。</li>
+    <li><code>N_TILES</code> —— stem/recovery 切几块。<span class="hl">V 与 U 的权衡旋钮</span>:块多省显存但慢、块少快但费显存。FAST_STREAM 时被自动设为 1。</li>
+  </ul>
+</div>
+<p><strong>怎么调用 / 怎么改:</strong>这些都用 <code>setdefault</code>,意味着你可以在命令行<strong>覆盖</strong>它们:<code>FAST_STREAM=0 N_TILES=16 python inference.py</code>。换方向时,这是你第一个该扫的旋钮组。</p>
+
+<h3 id="c1-2">1.2 加载权重 + 从内嵌 cfg 重建结构</h3>
+<p><strong>这段干啥:</strong>权重文件 <code>student.pth</code> 里不仅有参数,还存了一份结构配置 <code>cfg</code>(patch/embed/depths/heads…)。所以推理端<strong>不需要外部结构文件</strong>,直接照 cfg 把模型搭出来再灌权重。<code>strict=False</code> 容忍少量键不匹配(如 buffer)。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">inference.py · L62–L74</span></div><code><span class="k">from</span> maxvit3d_student <span class="k">import</span> MaxVit3DStudent
+<span class="k">import</span> maxvit3d_student <span class="k">as</span> _M
+_M.set_sdpa(<span class="k">False</span>)                       <span class="c"># ★关掉 torch SDPA(DCU 上它回退 MATH,费显存又慢)</span>
+ckpt = torch.load(<span class="s">f"{cfg.checkpoint_dir}/student.pth"</span>, map_location=<span class="s">"cuda:0"</span>)
+c = ckpt[<span class="s">"cfg"</span>]                          <span class="c"># 结构配置内嵌在权重里</span>
+model = MaxVit3DStudent(patch_size=<span class="f">tuple</span>(c[<span class="s">"patch"</span>]), embed_dim=c[<span class="s">"embed"</span>],
+                        depths=<span class="f">tuple</span>(c[<span class="s">"depths"</span>]), num_heads=<span class="f">tuple</span>(c[<span class="s">"heads"</span>]),
+                        global_mode=c.get(<span class="s">"global_mode"</span>,<span class="s">"grid"</span>),
+                        mlp_ratio=c.get(<span class="s">"mlp_ratio"</span>,<span class="n">4.0</span>)).to(<span class="s">'cuda:0'</span>)
+model.load_state_dict(ckpt[<span class="s">"model_state_dict"</span>], strict=<span class="k">False</span>)
+model.eval().half()                       <span class="c"># 推理走 fp16 权重</span></code></pre>
+<p><strong>怎么改适配:</strong>换权重只改 <code>student.pth</code> 路径,结构会跟着 cfg 自动变——这就是为什么训练时(L3)要把 cfg 一起存进 ckpt。<code>set_sdpa(False)</code> 是 DCU 专属决定(CUDA 上结论相反),换平台要重新验证。</p>
+
+<h3 id="c1-3">1.3 构 CppRunner + ★优雅降级(决赛保命设计)</h3>
+<p><strong>这段干啥:</strong>尝试构建并初始化 CppRunner;<span class="hl">一旦 .so 加载不了或初始化报错,<code>except</code> 兜底回退到普通 torch 前向,绝不让评测崩</strong>。这是"宁可慢、不可挂"的工程纪律。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">inference.py · L98–L126</span></div><code>infer = <span class="k">None</span>
+<span class="k">try</span>:
+    <span class="k">from</span> maxvit3d_cpp <span class="k">import</span> CppRunner
+    runner = CppRunner(model)
+    runner.init()        <span class="c"># rocblas/gemm_init + warmup(★计时区外,一次性消懒加载)</span>
+    <span class="k">if</span> FAST_STREAM:
+        _buf_s, _buf_u = _MCP.fast_make_buffers(_NREC)   <span class="c"># 计时外预分配,复用</span>
+        <span class="k">with</span> torch.no_grad():       <span class="c"># 自检必须走 fast_forward(否则峰值被抬高)</span>
+            _pk = _MCP.prepack_input(torch.randn(<span class="n">1</span>,<span class="n">72</span>,<span class="n">721</span>,<span class="n">1440</span>, dtype=torch.float16, device=<span class="s">'cpu'</span>))
+            runner.fast_forward(_pk, _buf_s, _buf_u); <span class="k">del</span> _pk
+    <span class="k">else</span>:
+        <span class="k">with</span> torch.no_grad():       <span class="c"># 628 档自检:跑一次不报错才采用</span>
+            _t = torch.randn(<span class="n">1</span>,<span class="n">72</span>,<span class="n">721</span>,<span class="n">1440</span>, dtype=torch.float16, device=<span class="s">'cuda:0'</span>)
+            runner(_t); <span class="k">del</span> _t
+    infer = <span class="k">lambda</span> x: runner(x)
+    <span class="f">print</span>(<span class="s">"✅ CppRunner (HIP/hipBLAS) enabled"</span>)
+<span class="k">except</span> Exception <span class="k">as</span> _e:
+    <span class="f">print</span>(<span class="s">f"⚠️ CppRunner unavailable ({_e}); fallback to torch forward"</span>)
+    FAST_STREAM = <span class="k">False</span>
+    <span class="k">def</span> <span class="f">infer</span>(x):
+        <span class="k">with</span> torch.autocast(<span class="s">'cuda'</span>, dtype=torch.float16):
+            <span class="k">return</span> model(x)</code></pre>
+<div class="box a">
+  <div class="h">为什么自检要在计时区外先跑一次</div>
+  <p>第一次跑任何 kernel 都有"懒加载"开销(rocBLAS 选算法、HIP 模块装载),首样本能比稳态慢几秒。<code>init()</code> + 自检把这些<strong>全挪到计时区外</strong>,让评测计到的每个样本都是"热"的稳态时延。<span class="hl">这是 V 分能打高的隐形前提</span>——计时区里只剩纯计算。</p>
+</div>
+<p><strong>怎么改适配:</strong>这个 try/except 结构是模板,换方向时直接复用:任何"高风险加速"(自定义 .so、特殊 kernel)都该包在 try 里,except 回退到能跑的稳妥路径。决赛环境陌生,这能救命。</p>
+
+<h3 id="c1-4">1.4 warmup + 后台预取(都在计时区外)</h3>
+<p><strong>这段干啥:</strong>两个"零风险纯利好"优化。① warmup:计时前再空跑一次前向,暖好剩余的 torch reshape/pad kernel;FAST_STREAM 时 warmup 必须走 <code>fast_forward</code>(否则峰值统计被抬高)。② 后台线程预取下一个样本的数据(取数/numpy 在 C 层释放 GIL,可与 GPU 计算并行),省掉每样本的取数等待。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">inference.py · L140–L158(节选)</span></div><code>torch.cuda.empty_cache()   <span class="c"># 释放 warmup 碎片,样本循环从干净 reserved 增长(降整卡瞬时峰值)</span>
+<span class="k">import</span> threading, queue
+<span class="k">def</span> <span class="f">_prefetch</span>(it, q, n=<span class="n">2</span>):
+    <span class="k">for</span> d <span class="k">in</span> it: q.put(d)
+    q.put(<span class="k">None</span>)
+_q = queue.Queue(maxsize=<span class="n">2</span>)
+threading.Thread(target=_prefetch, args=(<span class="f">iter</span>(test_dataloader), _q), daemon=<span class="k">True</span>).start()</code></pre>
+
+<h3 id="c1-5">1.5 样本循环 + ★AI4S 计时区(一行都不能改)</h3>
+<p><strong>这段干啥:</strong>对每个样本:把输入拼成 <code>[1,72,721,1440]</code>(地面 4 通道 + 3 静态掩膜 + 高空 65 通道)→ 在<strong>官方标注的计时区</strong>里调前向 → 反归一化存盘。计时区由 <code>start_time / model前向 / torch.cuda.synchronize() / end_time</code> 四行组成,<span class="hl">标注 "AI4S 不可更改" —— 位置和写法绝不能动</span>。FAST_STREAM 把"数据搬运/重组"挪到计时区<em>外</em>,计时区里只剩 <code>fast_forward</code> 纯计算。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">inference.py · L182–L196(FAST_STREAM 分支)</span></div><code>packed = _MCP.prepack_input(invar)        <span class="c"># ★计时区外:连续 strip-major pinned(数据准备)</span>
+<span class="c">#----------------------AI4S(时间度量不可更改)---------------------------</span>
+start_time = time.perf_counter()          <span class="c"># AI4S(位置不可改)</span>
+_ms, _mu = runner.fast_forward(packed, _buf_s, _buf_u)
+torch.cuda.synchronize()                  <span class="c"># AI4S(不可改,新增:DCU异步必须同步才计准)</span>
+end_time = time.perf_counter()            <span class="c"># AI4S(位置不可改)</span>
+time_list.append(end_time-start_time)     <span class="c"># AI4S(位置不可改)</span>
+<span class="c">#---------------------------------------------------------------------</span>
+out_surface  = _MCP.reassemble_fast(_ms, _buf_s).squeeze(<span class="n">2</span>)   <span class="c"># ★计时区外重组</span>
+out_upper_air = _MCP.reassemble_fast(_mu, _buf_u)
+pred_var = (torch.concat([out_surface, out_upper_air.reshape(_upper_shape)], dim=<span class="n">1</span>).numpy()
+            * stds + means)               <span class="c"># 反归一化回物理量</span>
+np.save(<span class="s">f"result/output/{filename}.npy"</span>, pred_var)</code></pre>
+<div class="box r">
+  <div class="h">计时区铁律(决赛同样适用)</div>
+  <p>① <code>synchronize()</code> 必须有 —— DCU 算子异步,不同步会把 GPU 真实耗时算少(看着快其实作弊,会被判违规)。② 计时区内<strong>只放 model 前向</strong> —— 任何数据搬运、reshape、存盘都要挪出去。③ 这四行的位置/写法是官方给的,<span class="hl">不要改、不要挪、不要加东西进去</span>。这是 V 分合规的红线。</p>
+</div>
+<div class="lab"><span class="lbl">动手实践 1</span>对比两档:分别跑 <code>FAST_STREAM=1 python inference.py</code> 和 <code>FAST_STREAM=0 N_TILES=8 python inference.py</code>,各记 <code>time_record.json</code> 中位数。再用 <code>hy-smi</code> 边跑边看显存峰值。你会看到 566 档显存更低、628 档时延更稳——这就是 U/V 权衡的实物。</div>
+
+<!-- ===================== 2 maxvit3d_cpp.py ===================== -->
+<h2 class="chap" id="c2"><span class="cn">2</span>maxvit3d_cpp.py 逐段讲解(CppRunner)<a href="#top" class="backtop">↑</a></h2>
+<p class="chap-intro">文件位置:<code>最优项目代码/01_推理部署/maxvit3d_cpp.py</code>(496 行)。核心思想一句话:<strong>照着 <code>maxvit3d_student.py</code> 的前向流程,把每个算子换成 ctypes 调 HIP kernel,reshape 仍用 torch view,做到 bit-exact</strong>。</p>
+
+<h3 id="c2-1">2.1 ctypes 加载两个 .so + 声明函数签名</h3>
+<p><strong>这段干啥:</strong>用 <code>ctypes.CDLL</code> 把两个手写库加载进来,并用 <code>argtypes</code> 声明每个 C 函数的参数类型(指针 + 整数 + stream)。<code>libgemm.so</code> 给 GEMM/LayerNorm/SwiGLU,<code>libflashattn.so</code> 给 flash 注意力 + RMSNorm。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">maxvit3d_cpp.py · L19–L43(节选)</span></div><code>_LIBG = ctypes.CDLL(<span class="s">"libgemm.so"</span>)        <span class="c"># matrix-core GEMM 库(L2 的主角)</span>
+_LIBF = ctypes.CDLL(<span class="s">"libflashattn.so"</span>)   <span class="c"># flash 注意力 + RMSNorm</span>
+<span class="c"># 声明 C 函数签名:全是 void* 指针 + int 维度 + void* stream</span>
+_LIBG.gemm_linear_fp16.argtypes = [ctypes.c_void_p]*<span class="n">4</span> + [ctypes.c_int]*<span class="n">3</span> + [ctypes.c_void_p]
+_LIBF.flash_qkv_launch_h.argtypes = [ctypes.c_void_p]*<span class="n">4</span> + [ctypes.c_int]*<span class="n">2</span> + [ctypes.c_void_p]</code></pre>
+<p><strong>怎么调用底层:</strong>关键技巧是把 PyTorch 张量当成裸指针传给 C —— <code>tensor.data_ptr()</code> 拿到显存地址,<code>torch.cuda.current_stream().cuda_stream</code> 拿到当前 stream,这样 HIP kernel 和 torch 在同一条流上、共用同一块显存,零拷贝。</p>
+
+<h3 id="c2-2">2.2 五个算子封装:Python 包一层、底层走 HIP</h3>
+<p><strong>这段干啥:</strong>把"形状整理 + 调 C 函数 + 形状还原"包成好用的 Python 函数。以 <code>linear</code>(全连接/GEMM)为例,它把任意维输入压成二维 <code>[M,K]</code>、调 <code>gemm_linear_fp16</code>、再 reshape 回去。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">maxvit3d_cpp.py · L50–L62</span></div><code><span class="k">def</span> <span class="f">linear</span>(x, W, b=<span class="k">None</span>):
+    <span class="s">"""x:[...,K] → [...,N]; W:[N,K]; b:[N] or None. fp16."""</span>
+    *lead, K = x.shape;  M = <span class="f">prod</span>(lead);  N = W.shape[<span class="n">0</span>]
+    x2 = x.reshape(M, K).contiguous()
+    out = torch.empty(M, N, dtype=torch.float16, device=x.device)
+    _LIBG.gemm_linear_fp16(c_void_p(x2.data_ptr()), c_void_p(W.data_ptr()),
+                           c_void_p(bp), c_void_p(out.data_ptr()), M, N, K, _stream())
+    <span class="k">return</span> out.reshape(*lead, N)</code></pre>
+<p>同理还有 <code>rmsnorm</code>(归一化)、<code>layernorm</code>、<code>swiglu_w</code>(门控 FFN:两次 linear 中间夹 silu·gate)、<code>attention_window</code>(flash 窗口注意力)。<span class="hl">这五个就是整个网络的全部"计算原语"</span>——网络再大,也是它们 + reshape 拼出来的。</p>
+<div class="box g">
+  <div class="h">为什么这样设计能 bit-exact</div>
+  <p>形状变换(reshape/permute/pad)全部仍用 PyTorch 的 view 操作(和原模型一字不差),<strong>只把"算"这一步换成 HIP</strong>。HIP kernel 内部用 fp16 输入 + fp32 累加,和 torch autocast 的数值行为对齐,所以整条前向下来 max diff &lt; 1e-2(fp16 噪声级),W 分不变。</p>
+</div>
+
+<h3 id="c2-3">2.3 CppRunner 预算 + init(把能提前算的都提前)</h3>
+<p><strong>这段干啥:</strong><code>__init__</code> 里把"权重固定、每次都一样"的东西<strong>预算好缓存起来</strong>:注意力的 scale(<code>logit_scale</code> 取指数)、相对位置偏置表(<code>RelPosBias3D</code> 查好的 [H,N,N])。这些不必每次前向重算。<code>init()</code> 在计时区外做 <code>gemm_init</code> + 微 warmup,消掉所有 kernel 首次懒加载。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">maxvit3d_cpp.py · L178–L195(节选)</span></div><code><span class="c"># 预算 scale[h]=clamp(logit_scale,max=log100).exp(),每块一次(权重固定)</span>
+<span class="k">for</span> name, p <span class="k">in</span> model.named_parameters():
+    <span class="k">if</span> name.endswith(<span class="s">"attn.logit_scale"</span>):
+        self._scales[...] = torch.clamp(p, max=math.log(<span class="n">100.</span>)).exp().reshape(-<span class="n">1</span>).float()
+<span class="c"># 预算相对位置偏置表 [H,N,N],每块一次</span>
+<span class="k">for</span> n, mod <span class="k">in</span> model.named_modules():
+    <span class="k">if</span> n.endswith(<span class="s">".attn.bias"</span>): self._bias[...] = mod().detach()[<span class="n">0</span>].half()
+
+<span class="k">def</span> <span class="f">init</span>(self):
+    _LIBG.gemm_init()        <span class="c"># ★L2 重点:matrix-core 版这里【不】调 rocblas_initialize → 省 121MiB</span>
+    self.micro_warmup()      <span class="c"># 用小张量预触发每个 torch elementwise/pad kernel 的首次加载</span>
+    torch.cuda.synchronize()</code></pre>
+
+<h3 id="c2-4">2.4 前向编排:逐层复刻 AttnFFN</h3>
+<p><strong>这段干啥:</strong><code>_ffn_block</code> 复刻学生模型一层的结构:<em>pre-RMSNorm → 注意力 → LayerScale 残差;pre-RMSNorm → SwiGLU → LayerScale 残差</em>。<code>_attn_block</code> 复刻"窗口划分 → qkv linear → flash → 窗口还原 → proj"。这就是把 PyTorch 的 <code>forward</code> 用我们的算子重写一遍。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">maxvit3d_cpp.py · L245–L256</span></div><code><span class="k">def</span> <span class="f">_ffn_block</span>(self, prefix, blk, x, res, H):
+    ls1, ls2 = self.sd[prefix+<span class="s">".ls1"</span>], self.sd[prefix+<span class="s">".ls2"</span>]
+    h = rmsnorm(x, self.sd[prefix+<span class="s">".norm1.weight"</span>])              <span class="c"># 我的 HIP rmsnorm</span>
+    h = self._attn_block(prefix+<span class="s">".attn"</span>, h, res, blk.mode, H)     <span class="c"># flash 注意力</span>
+    x = x + ls1 * h                                              <span class="c"># LayerScale 残差</span>
+    h2 = rmsnorm(x, self.sd[prefix+<span class="s">".norm2.weight"</span>])
+    h2 = swiglu_w(h2, self.sd[prefix+<span class="s">".mlp.w12.weight"</span>], ...)        <span class="c"># 我的 HIP swiglu</span>
+    <span class="k">return</span> x + ls2 * h2</code></pre>
+<p><strong>怎么改适配:</strong>如果决赛换的模型层结构不同(比如多一个 norm、换激活),<span class="hl">你只需照着新模型的 <code>forward</code> 改这里的编排顺序</span>,算子库不用动(linear/norm/silu 还是那几样)。这就是"编排"和"算子"解耦的好处。</p>
+
+<h3 id="c2-5">2.5 流式 stem / recovery(U 的大头来自这里)</h3>
+<p><strong>这段干啥:</strong>stem(把气象网格切成 token)和 recovery(把 token 还原成网格)是最吃显存的两步(高分辨率)。<code>_embed</code> 不一次性处理整张图,而是<strong>沿纬度切成 N_TILES 条 strip</strong>,每条:从 CPU 切片搬 GPU → 局部 pad → linear → 写进预分配 buffer。这样输入永不整体进 GPU(峰值 -142MiB),且不 <code>torch.cat</code>(省 token 输出翻倍)。全程数学等价。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">maxvit3d_cpp.py · L283–L298(节选)</span></div><code>n_tiles = <span class="f">int</span>(os.environ.get(<span class="s">"N_TILES"</span>, <span class="s">"8"</span>))   <span class="c"># ★旋钮:strip 数</span>
+out = torch.empty(<span class="n">1</span>, O, nz, nH, nw, dtype=torch.float16, device=<span class="s">"cuda:0"</span>)  <span class="c"># 预分配输出</span>
+<span class="k">for</span> s <span class="k">in</span> range(<span class="n">0</span>, nH, rows):           <span class="c"># 逐 strip</span>
+    strip = x5[:, :, :, a0:a1, :].to(<span class="s">"cuda:0"</span>)    <span class="c"># ★从 CPU 切片才搬 GPU(input 流式)</span>
+    strip = F.pad(strip, (pl,pr,ptop,pbot,pf,pb))   <span class="c"># 局部 pad(不物化整张 padded)</span>
+    o = linear(blk, Wf, proj_b)                      <span class="c"># 这条 strip 的 embed</span>
+    out[:, :, :, s:e, :].copy_(o); <span class="k">del</span> strip, blk, o  <span class="c"># 写 buffer,不 cat</span></code></pre>
+<p><code>_recovery</code> 同理,还多一个 <code>REC_OFFLOAD</code> 开关:开了就把输出 buffer 放 CPU,每条 strip 算完即 D2H,GPU 端不存 output(更省 U,但每 strip 多 ~52ms D2H,V 变慢)。<span class="hl">评测只算 GPU 显存,CPU 不计</span>,所以这是纯 U 利好、代价在 V。</p>
+
+<h3 id="c2-6">2.6 ENC_FP32:轻量残差-fp32 混合精度(解锁高 W 权重)</h3>
+<p><strong>这段干啥:</strong>bo3b 这类高精度权重在纯 fp16 下,enc 段的<strong>残差累加值会 &gt; 65504</strong>(fp16 上限)→ NaN。解法很巧:<span class="hl">子层(注意力/SwiGLU)还是走 fp16 的 HIP kernel(快、省显存、不引入 torch matmul 库),只把"残差流 x"保 fp32</strong>。因为溢出根因是残差累加,子层输出本身 fp16 装得下。这样既不 NaN,又几乎不增显存、不丢速度。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">maxvit3d_cpp.py · L411–L426(节选)</span></div><code><span class="k">def</span> <span class="f">rmsnorm_fp32</span>(x32, w):                  <span class="c"># fp32 上归一(x32 可能 >65504,必须 fp32)</span>
+    n = x32 * torch.rsqrt(x32.pow(<span class="n">2</span>).mean(-<span class="n">1</span>,keepdim=<span class="k">True</span>)+<span class="n">1e-6</span>)
+    <span class="k">return</span> (n * w.float()).half()            <span class="c"># 归一输出 ~O(1) 安全,cast fp16 给子层 kernel</span>
+xf = xx.float()                            <span class="c"># ★残差流保 fp32</span>
+<span class="k">for</span> i, blk <span class="k">in</span> enumerate(self.m.enc):
+    h = rmsnorm_fp32(xf, ...);  h = self._attn_block(...)   <span class="c"># fp32 prenorm → fp16 attn</span>
+    xf = xf + ls1 * h.float()              <span class="c"># ★fp32 残差累加(不溢出)</span>
+    h2 = swiglu_w(rmsnorm_fp32(xf, ...), ...)
+    xf = xf + ls2 * h2.float()
+<span class="k">return</span> xf.half()                           <span class="c"># enc 输出 cast 回 fp16 进 downsample</span></code></pre>
+<div class="box b"><div class="h">迁移价值</div><p>"找到溢出的<strong>唯一根因</strong>(残差累加),只对那一处升精度,其余保持低精度"——这是混合精度的精髓。换方向遇到 fp16 NaN,先用 <code>PROFILE_MEM</code> / 打印定位是哪一步溢出,再做最小升精度,而不是无脑全 fp32(那会丢光速度和显存优势)。</p></div>
+
+<h3 id="c2-7">2.7 fast_forward:566 档的三件套</h3>
+<p><strong>这段干啥:</strong>566 档的整条前向。和普通 <code>__call__</code>(628 档)比,区别全在 stem/recovery:① 输入预排成<strong>连续 strip-major pinned</strong>(在计时区外 <code>prepack_input</code> 做),embed 逐连续 chunk H2D(连续切片走满 DMA,3ms;而非 strided gather 44ms);② recovery 写连续 pinned buffer 异步 D2H(output 不在 GPU resident,省 128MiB);③ 末尾一次 synchronize。中间骨干(enc/mid/dec)完全一样。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">maxvit3d_cpp.py · L380–L397(fast_forward 主体)</span></div><code><span class="k">def</span> <span class="f">fast_forward</span>(self, packed, buf_s, buf_u):
+    s, u = self.fast_embed(packed, NC_IN)            <span class="c"># ① 连续 chunk 流式 embed</span>
+    xx = torch.concat([s.unsqueeze(<span class="n">2</span>), u], dim=<span class="n">2</span>)
+    xx = self._run_enc(xx, rf); skip = xx            <span class="c"># enc(ENC_FP32 在此生效)</span>
+    xx = self._downsample(xx, rf)
+    xx = self._run_stage(<span class="s">"mid"</span>, self.m.mid, xx, ...)   <span class="c"># 1/4 分辨率主干</span>
+    xx = self._upsample(...); xx = self._run_stage(<span class="s">"dec"</span>, ...)
+    output = torch.concat([xx, skip], dim=-<span class="n">1</span>)         <span class="c"># U 形 skip</span>
+    ms = self.fast_recovery(<span class="s">"patchrecovery2d"</span>, rin2, (<span class="n">1</span>,<span class="n">721</span>,<span class="n">1440</span>), buf_s, NREC)  <span class="c"># ② 异步 D2H</span>
+    mu = self.fast_recovery(<span class="s">"patchrecovery3d"</span>, rin3, (<span class="n">13</span>,<span class="n">721</span>,<span class="n">1440</span>), buf_u, NREC)
+    torch.cuda.synchronize()                          <span class="c"># ③ 末尾一次同步</span>
+    <span class="k">return</span> ms, mu</code></pre>
+<div class="box ig"><div class="h">628 档(__call__)vs 566 档(fast_forward)怎么选</div><p>628 档(<code>FAST_STREAM=0</code>):输入整体进 GPU,embed 快、V 最稳;峰值含输入。566 档(<code>FAST_STREAM=1</code>):流式,峰值低 ~60MiB、U 更高;V 略敏感。<span class="hl">最优分用 566</span>,因为它在 V 不超阈值的前提下把 U 压到最低。决赛先用 628 拿稳保底分,再试 566 冲 U。</p></div>
+
+<!-- ===================== 3 怎么改 ===================== -->
+<h2 class="chap" id="c3"><span class="cn">3</span>怎么改适配新方向(决赛实战)<a href="#top" class="backtop">↑</a></h2>
+<table>
+  <tr><th>换了什么</th><th>改哪里</th></tr>
+  <tr><td>换权重(同结构)</td><td>只换 <code>student.pth</code> 路径;cfg 内嵌会自动重建结构。</td></tr>
+  <tr><td>换模型层结构</td><td>改 CppRunner 的 <code>_ffn_block</code>/<code>_attn_block</code> 编排顺序,算子库(linear/norm/silu)不动。</td></tr>
+  <tr><td>显存超了</td><td>调大 <code>N_TILES</code>、开 <code>FAST_STREAM=1</code> / <code>REC_OFFLOAD=1</code>;牺牲 V 换 U。</td></tr>
+  <tr><td>时延超了</td><td><code>FAST_STREAM=0</code> 用 628 档、调小 <code>N_TILES</code>;牺牲 U 换 V。</td></tr>
+  <tr><td>fp16 NaN</td><td>定位溢出层 → 对那一处用 ENC_FP32 式"残差流升 fp32"。</td></tr>
+  <tr><td>.so 在新环境加载不了</td><td>不用慌——优雅降级会自动回退 torch 前向,先拿到能跑的分,再排查/重编 .so。</td></tr>
+</table>
+
+<!-- ===================== 4 动手 ===================== -->
+<h2 class="chap" id="c4"><span class="cn">4</span>动手实践清单(做完算掌握)<a href="#top" class="backtop">↑</a></h2>
+<div class="lab"><span class="lbl">动手实践 2 · 读懂降级</span>故意把 <code>libgemm.so</code> 改名(<code>mv libgemm.so libgemm.so.bak</code>)再跑 <code>python inference.py</code>。观察它打印 <code>⚠️ CppRunner unavailable ... fallback to torch forward</code> 并仍跑完出结果。体会"优雅降级"在评测里的保命作用。跑完改回来。</div>
+<div class="lab"><span class="lbl">动手实践 3 · 扫 N_TILES 找甜点</span>跑 <code>for n in 4 8 16; do N_TILES=$n FAST_STREAM=0 python inference.py; done</code>,每次记下 <code>hy-smi</code> 峰值 + time_record 中位数,画出"块数 vs (峰值, 时延)"的权衡曲线,找你这台 DCU 上 V 不崩、U 最低的点。</div>
+<div class="lab"><span class="lbl">动手实践 4 · 验证 bit-exact</span>用 <code>PROFILE_MEM=1 python inference.py</code> 看各阶段 [MEM] 峰值打印;再写个小脚本对比 CppRunner 输出与 <code>model(invar)</code>(torch)输出的 max abs diff,确认 &lt; 1e-2(证明 HIP 路径没改变结果)。</div>
+
+<h2 class="chap" id="sum"><span class="cn">收</span>小结:这一课你掌握了什么<a href="#top" class="backtop">↑</a></h2>
+<div class="box g">
+  <ul style="margin:4px 0 0;">
+    <li><strong>inference.py</strong>:用环境变量定档(FAST_STREAM/ENC_FP32/N_TILES)、从内嵌 cfg 重建模型、try/except 优雅降级、把数据搬运挪出 AI4S 计时区、计时区里只放纯计算 + synchronize。</li>
+    <li><strong>maxvit3d_cpp.py(CppRunner)</strong>:ctypes 调两个 .so、五个算子封装(传 data_ptr + stream)、逐层复刻前向 bit-exact、流式 stem/recovery 降 U、ENC_FP32 只升残差流 fp32 解锁高 W 权重、566/628 两档。</li>
+    <li><strong>方法论迁移</strong>:把懒加载挪出计时区是 V 的隐形前提;优雅降级是决赛保命;U/V 靠 N_TILES/FAST_STREAM 旋钮权衡;混合精度只升溢出根因那一处。</li>
+  </ul>
+  <p style="margin-top:8px;">下一课 <strong>L2 · matrix-core HIP</strong>:打开 <code>libgemm.so</code> 的源码 <code>gemm_lib_mmac.hip</code>,看手写 <code>v_mmac</code> 矩阵核 GEMM 怎么写、fragment 布局怎么逆向、怎么 hipcc 编译、怎么不调 rocBLAS 省 121MiB。</p>
+</div>
+
+<footer>
+  <p>复赛备战 · 逐代码讲义 L1 · 推理部署 · 配套代码见 <code>复赛备战课程/最优项目代码/01_推理部署/</code></p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

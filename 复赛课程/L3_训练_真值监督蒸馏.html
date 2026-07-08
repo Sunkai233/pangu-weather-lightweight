@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L3 · 训练逐代码 · distill_truth.py(真值监督蒸馏,bo3b 权重怎么训出来)</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --muted:#3a352f; --faint:#5a5248; --line:#e0d8c8;
+    --paper:#ffffff; --paper2:#f7f5f0; --bg:#faf8f3;
+    --accent:#8a4f2d; --accent-soft:#f3ebe2; --accent-line:#dcc9b5;
+    --blue:#1c5f7a; --blue-soft:#eaf3f7; --blue-line:#bcd9e6;
+    --green:#2e6b3e; --green-soft:#ecf6ee; --green-line:#bfe0c6;
+    --amber:#8a5a10; --amber-soft:#fbf2df; --amber-line:#ecd7a8;
+    --red:#9a2f22; --red-soft:#fbeae6; --red-line:#ecc3b8;
+    --indigo:#473c78; --indigo-soft:#eeebf6; --indigo-line:#cdc5e6;
+    --code-bg:#f7f5f0;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:"Noto Serif SC","Songti SC",Georgia,"Microsoft YaHei",serif;
+        font-size:16.5px; line-height:1.85; -webkit-font-smoothing:antialiased; }
+  .layout{ display:flex; max-width:1280px; margin:0 auto; }
+  nav{ position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
+       width:280px; min-width:280px; padding:28px 16px 60px; background:var(--paper);
+       border-right:1px solid var(--line); font-size:13.5px; font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  nav .navtitle{ font-weight:800; font-size:15px; color:var(--accent); margin-bottom:2px; }
+  nav .navsub{ color:var(--faint); font-size:11.5px; margin-bottom:14px; }
+  nav a{ display:block; color:var(--muted); text-decoration:none; padding:3px 9px; border-radius:7px; border-left:2px solid transparent; }
+  nav a:hover{ background:var(--accent-soft); color:var(--accent); }
+  nav a.chap{ font-weight:700; color:var(--ink); margin-top:12px; }
+  nav a.sub{ padding-left:20px; font-size:12px; color:var(--faint); }
+  main{ flex:1; min-width:0; padding:44px 52px 120px; background:var(--paper); }
+  @media (max-width:1000px){ nav{ display:none; } main{ padding:28px 18px 70px; } body{ font-size:16px; } }
+  header.doc{ border-bottom:2px solid var(--accent-line); padding-bottom:22px; margin-bottom:8px; }
+  header.doc .kicker{ display:inline-block; background:var(--accent); color:#fff; font-size:12px;
+       font-weight:700; letter-spacing:1px; padding:4px 13px; border-radius:20px; font-family:sans-serif; }
+  header.doc h1{ font-size:29px; line-height:1.34; margin:15px 0 10px; letter-spacing:.3px; color:#000; }
+  header.doc .lead{ color:var(--muted); font-size:16.5px; max-width:850px; }
+  header.doc .how{ margin-top:16px; background:var(--paper2); border:1px solid var(--line);
+       border-radius:12px; padding:13px 17px; font-size:14.5px; color:var(--muted); }
+  h2.chap{ font-size:24px; margin:52px 0 6px; padding-top:16px; border-top:1px dashed var(--line); letter-spacing:.3px; color:#000; }
+  h2.chap .cn{ display:inline-block; background:var(--accent); color:#fff; font-size:14px; font-weight:800;
+       min-width:34px; height:34px; line-height:34px; text-align:center; border-radius:9px; margin-right:11px; vertical-align:middle; padding:0 7px; font-family:sans-serif; }
+  .chap-intro{ color:var(--muted); font-size:15.5px; margin:8px 0 4px; }
+  h3{ font-size:18.5px; margin:30px 0 8px; color:#111; }
+  h4{ font-size:16px; margin:20px 0 6px; color:var(--accent); font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  p{ margin:10px 0; } strong{ color:#000; font-weight:700; }
+  em{ font-style:normal; color:var(--amber); font-weight:700; }
+  ul,ol{ margin:9px 0; padding-left:24px; } li{ margin:5px 0; }
+  code{ font-family:"JetBrains Mono","Fira Code",Consolas,monospace; font-size:.85em;
+        background:#eee6d8; color:#6e3f1f; padding:2px 6px; border-radius:5px; }
+  .box{ border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:10px;
+        padding:13px 18px; margin:16px 0; background:var(--paper); }
+  .box.g{ border-left-color:var(--green); background:var(--green-soft); }
+  .box.r{ border-left-color:var(--red); background:var(--red-soft); }
+  .box.a{ border-left-color:var(--amber); background:var(--amber-soft); }
+  .box.b{ border-left-color:var(--blue); background:var(--blue-soft); }
+  .box.ig{ border-left-color:var(--indigo); background:var(--indigo-soft); }
+  .box .h{ font-weight:800; margin-bottom:4px; font-size:15px; color:var(--accent); }
+  .box.g .h{ color:var(--green); } .box.r .h{ color:var(--red); } .box.a .h{ color:var(--amber); }
+  .box.b .h{ color:var(--blue); } .box.ig .h{ color:var(--indigo); }
+  .box p{ margin:6px 0; }
+  .lab{ border:1.5px solid var(--green-line); background:#f0f8f1;
+        border-radius:12px; padding:14px 18px 14px 52px; margin:18px 0; position:relative; }
+  .lab::before{ content:"🛠"; position:absolute; left:16px; top:13px; font-size:21px; }
+  .lab .lbl{ display:block; font-size:12.5px; font-weight:800; color:var(--green); letter-spacing:1px; margin-bottom:4px; font-family:sans-serif; }
+  pre{ background:#f7f5f0; border:1px solid #e0d8c8; border-radius:9px; padding:0; margin:12px 0; overflow:hidden; }
+  pre .bar{ display:flex; gap:6px; align-items:center; padding:7px 12px; background:#efe9df; border-bottom:1px solid #e0d8c8; }
+  pre .bar .dot{ width:10px; height:10px; border-radius:50%; } pre .bar .r{ background:#d96459; } pre .bar .y{ background:#c79a2e; } pre .bar .g{ background:#4fae5e; }
+  pre .bar .nm{ margin-left:6px; color:#5a5248; font-size:11.5px; font-family:"JetBrains Mono",monospace; }
+  pre code{ display:block; background:none; color:#1a1a1a; padding:14px 16px; font-size:12.9px; line-height:1.7; overflow-x:auto; }
+  pre code .c{ color:#555; font-style:italic; } pre code .k{ color:#0033aa; } pre code .s{ color:#006600; } pre code .f{ color:#005a7a; } pre code .n{ color:#6a1b9a; }
+  .diagram{ font-family:"JetBrains Mono",monospace; font-size:12.8px; background:#fbf9f4;
+            border:1px solid var(--line); border-radius:10px; padding:15px 17px; margin:14px 0; line-height:1.85; overflow-x:auto; white-space:pre; color:#1a1a1a; }
+  .hl{ background:#fbeec4; padding:0 4px; border-radius:4px; font-weight:700; }
+  .backtop{ display:inline-block; font-size:12px; color:var(--faint); text-decoration:none; float:right; margin-top:6px; font-family:sans-serif; }
+  table{ border-collapse:collapse; width:100%; margin:14px 0; font-size:14.5px; font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  th,td{ border:1px solid var(--line); padding:7px 11px; text-align:left; vertical-align:top; }
+  th{ background:var(--paper2); color:var(--accent); font-weight:700; }
+  tr:nth-child(even) td{ background:#fbf8f0; }
+  .src{ font-size:12.5px; color:var(--faint); margin:2px 0 0; font-family:sans-serif; }
+  footer{ margin-top:60px; padding-top:22px; border-top:2px solid var(--accent-line); color:var(--muted); font-size:14px; }
+  @media print{
+    nav{ display:none; } main{ padding:0; } body{ background:#fff; font-size:11.5pt; }
+    .box,.lab,pre,table,.diagram{ break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav>
+  <div class="navtitle">L3 · 训练</div>
+  <div class="navsub">distill_truth.py · 真值监督</div>
+  <a href="#intro">导读 · bo3b 怎么训出来</a>
+  <a href="#chain">这一跳的分 · W +0.39</a>
+  <a href="#idea">1 · 纯蒸馏的天花板</a>
+  <a href="#data">2 · 数据:6h 真值对 + 落盘缓存</a>
+  <a href="#teacher">3 · 教师冻结 + 天花板参照</a>
+  <a href="#loss" class="chap">4 · ★损失构造(核心)</a>
+  <a href="#loss-1" class="sub">4.1 非温度纯蒸馏 + 温度 α 混合</a>
+  <a href="#loss-2" class="sub">4.2 truth-windq 低层 u/v/q</a>
+  <a href="#loss-3" class="sub">4.3 truth-full15 + full-temp</a>
+  <a href="#loss-4" class="sub">4.4 高频谱损失</a>
+  <a href="#loss-5" class="sub">4.5 protect/chanrw/DTP</a>
+  <a href="#opt" class="chap">5 · 优化器 + lr 6e-5</a>
+  <a href="#sel" class="chap">6 · ★选优对真值(非 val_match)</a>
+  <a href="#resume" class="chap">7 · resume 续训规则</a>
+  <a href="#run" class="chap">8 · 怎么训 + 怎么改</a>
+  <a href="#hands" class="chap">9 · 动手实践</a>
+  <a href="#sum" class="chap">小结</a>
+</nav>
+
+<main>
+
+<header class="doc" id="top">
+  <span class="kicker">复赛备战 · 逐代码讲义 L3 · 训练(W 精度)</span>
+  <h1>真值监督蒸馏:bo3b 权重怎么训出来的<br><span style="font-size:20px;color:var(--muted)">distill_truth.py · 教师蒸馏 + 温度/低层真值混合 + 选优对真值 + resume</span></h1>
+  <p class="lead">L1/L2 解决"怎么又快又省地把模型跑出来"(V/U)。这一课解决"怎么让它<strong>更准</strong>"(W)。打开 <code>distill_truth.py</code>,看最优 bo3b 权重怎么训:为什么纯蒸馏有天花板、真值监督怎么打破它、损失逐项怎么搭、为什么选优要看真值而不是看教师、补充训练为什么必须 resume。全程白底深字、可打印。</p>
+  <div class="how"><strong>怎么读:</strong>第 4 章(损失构造)是这一课的核心,真值监督的全部花样都在那。代码框对应 <code>最优项目代码/03_训练/distill_truth.py</code>。本课偏"训练工程",命令都能直接在 abc66 上敲。</p>
+</header>
+
+<h2 class="chap" id="intro" style="border-top:none; margin-top:26px;"><span class="cn">读</span>导读:这一课要回答的问题<a href="#top" class="backtop">↑</a></h2>
+<p>蒸馏 = 让小学生(学生模型)模仿大老师(教师 Pangu)的输出。但有个天花板:<span class="hl">学生再像老师,也只能逼近老师,永远超不过老师</span>。而 W 的打分公式里,学生 RMSE 比教师小才拿高分。怎么突破?<strong>除了模仿老师,还让学生直接看"标准答案"(ERA5 真值)</strong>——这就是真值监督。<code>distill_truth.py</code> 就是把"模仿老师"和"对答案"两种监督混在一起训。</p>
+<div class="box ig">
+  <div class="h">一句话抓住这一课</div>
+  <p>损失 = <strong>α·(对教师的蒸馏损失) + (1−α)·(对真值的损失)</strong>。<span class="hl">非温度通道纯蒸馏(老师已经很准),温度等"学生退化明显"的通道掺真值(让它超过老师)</strong>。再配上选优看真值、resume 续训、谱损失补细节,就训出了 bo3b。</p>
+</div>
+
+<h2 class="chap" id="chain"><span class="cn">分</span>这一跳的分:W +0.39(bo1 + bo3b)<a href="#top" class="backtop">↑</a></h2>
+<table>
+  <tr><th>里程碑</th><th>分数</th><th>这一跳</th><th>本课?</th></tr>
+  <tr><td>双叠加 U</td><td>95.46</td><td>推理侧(L1)</td><td>L1</td></tr>
+  <tr><td><strong>bo1 权重</strong></td><td><strong>95.60</strong></td><td><strong>真值监督训练,W +0.20</strong></td><td>✅ 本课</td></tr>
+  <tr><td><strong>bo3b 权重</strong></td><td><strong>95.79</strong></td><td><strong>真值监督加强(选优对真值),W +0.19</strong></td><td>✅ 本课</td></tr>
+  <tr><td>matrix-core / per-shape</td><td>96.06 / 96.12</td><td>推理侧(L2)</td><td>L2</td></tr>
+</table>
+<p class="src">数字为用户实测。W 的两跳(+0.39)都来自本课的训练改进。教师对真值的温度 RMSE 是天花板,学生破它即超教师。</p>
+
+<h2 class="chap" id="idea"><span class="cn">1</span>纯蒸馏的天花板(为什么要真值监督)<a href="#top" class="backtop">↑</a></h2>
+<p>W 打分核心是 <code>min((教师RMSE / 学生RMSE)², 1)</code>:学生 RMSE ≥ 教师时永远 &lt; 满分。纯蒸馏让学生对齐教师输出,<strong>最好也就追平教师(比值→1)</strong>,拿不到满分。要超满分线,必须让学生在某些通道比教师还准——只能靠直接学真值。</p>
+<div class="box b">
+  <div class="h">为什么挑"温度 + 低层 u/v/q"掺真值,而不是全部</div>
+  <p>分析发现学生相对教师<span class="hl">退化最集中在近地面温度、低层风/湿</span>(受地形、边界层影响)。这些通道误差里有大量"可降的方差"——掺真值能直接压下去、超教师。而高层 z/t 学生已追平教师(比值≈1),全掺真值反而可能把它带歪。所以是<strong>选择性真值</strong>:哪里弱补哪里。</p>
+</div>
+
+<h2 class="chap" id="data"><span class="cn">2</span>数据:连续 6h 真值对 + 落盘缓存<a href="#top" class="backtop">↑</a></h2>
+<p><strong>这段干啥:</strong>真值监督需要"输入 t → 真实未来场 t+6h"的配对。<code>build_pairs</code> 扫连续 ERA5 文件,只有相邻两文件时间戳恰好差 6 小时才配成一对。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">distill_truth.py · L94–L104</span></div><code><span class="k">def</span> <span class="f">build_pairs</span>(years):
+    <span class="s">"""连续文件相邻配对:(files[i], files[i+1]) = (输入t, 真值t+6h),仅当时间戳恰好差6h。"""</span>
+    pairs = []
+    <span class="k">for</span> y <span class="k">in</span> years:
+        fs = sorted(glob.glob(<span class="s">f"{BASE}/data/{y}/*.h5"</span>))
+        <span class="k">for</span> i <span class="k">in</span> range(len(fs)-<span class="n">1</span>):
+            t0 = datetime.strptime(os.path.basename(fs[i])[:<span class="n">10</span>], <span class="s">"%Y%m%d%H"</span>)
+            t1 = datetime.strptime(os.path.basename(fs[i+<span class="n">1</span>])[:<span class="n">10</span>], <span class="s">"%Y%m%d%H"</span>)
+            <span class="k">if</span> (t1-t0).total_seconds() == <span class="n">6</span>*<span class="n">3600</span>:   <span class="c">// 恰好差6h才配对</span>
+                pairs.append((fs[i], fs[i+<span class="n">1</span>]))
+    <span class="k">return</span> pairs</code></pre>
+<p><strong>落盘缓存(<code>DiskList</code>):</strong>教师输出 + 真值每对存一个 <code>.pt</code> 文件,训练时按需从磁盘读回。<span class="hl">这是为了规避 RAM 上限(abc66 容器 RAM 有限),从而能上全量数据</span>;还支持 <code>random.shuffle</code> 就地洗路径。换 lr/超参重训时,同配置的 <code>.pt</code> 可复用(免重算教师),省一大笔时间。</p>
+
+<h2 class="chap" id="teacher"><span class="cn">3</span>教师冻结 + 天花板参照<a href="#top" class="backtop">↑</a></h2>
+<p><strong>这段干啥:</strong>加载官方 Pangu 当教师,<strong>全程冻结</strong>(<code>requires_grad_(False)</code>),只用它产生稳定的蒸馏目标。训练前先算一次"教师对真值的温度 RMSE",作为天花板——<span class="hl">学生破了它就是超教师</span>。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">distill_truth.py · L286–L293 / L454–L455</span></div><code>teacher = Pangu(img_size=(<span class="n">721</span>,<span class="n">1440</span>)).to(dev).eval()
+teacher.load_state_dict(ck[<span class="s">"model_state_dict"</span>] <span class="k">if</span> <span class="s">"model_state_dict"</span> <span class="k">in</span> ck <span class="k">else</span> ck)
+<span class="k">for</span> p <span class="k">in</span> teacher.parameters(): p.requires_grad_(<span class="k">False</span>)   <span class="c">// ★教师冻结</span>
+...
+te_t2m, te_tup = teacher_truth_rmse()
+<span class="f">print</span>(<span class="s">f"[teacher天花板] 对真值 2m_t RMSE={te_t2m:.3f}K ..."</span>)   <span class="c">// 学生要破这个数</span></code></pre>
+
+<h2 class="chap" id="loss"><span class="cn">4</span>损失构造逐项(这一课的核心)<a href="#top" class="backtop">↑</a></h2>
+<p class="chap-intro">每个训练样本,学生输出 <code>ss</code>(地面)、<code>su</code>(高空)。损失由几块按需叠加。先建加权(纬度加权 coslat × 官方逐通道权重 sw/pw × 动态权重 dyn_w × 区域权重)。下面逐块拆。</p>
+
+<h3 id="loss-1">4.1 非温度通道纯蒸馏 + 温度通道 α 混合</h3>
+<p><strong>这段干啥:</strong>核心那一笔。用一个温度掩膜 <code>tmask</code>:非温度通道权重不动(纯对教师),温度通道把教师权重压成 <code>(1−tmask·(1−α))</code>、剩下的 <code>(1−α)</code> 留给真值项。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">distill_truth.py · L487–L497</span></div><code><span class="c"># 非温度通道:纯教师;温度通道:α 教师 + (1-α) 真值</span>
+te_w_s = wsd * (<span class="n">1</span> - tmask_s * (<span class="n">1</span> - a))      <span class="c"># a = truth-alpha</span>
+te_w_u = wud * (<span class="n">1</span> - tmask_u * (<span class="n">1</span> - a))
+loss = wl1(ssf, ts, te_w_s, <span class="n">0.25</span>) + wl1(suf, tu, te_w_u, <span class="n">1.0</span>)   <span class="c"># 对教师 ts/tu</span>
+<span class="c"># 温度真值项(权重×(1-α)):2m_t + 温度层 对真值 trs/tru_t</span>
+<span class="k">if</span> (<span class="n">1</span>-a) &gt; <span class="n">0</span>:
+    w2m = wsd[:, <span class="n">3</span>:<span class="n">4</span>] * (<span class="n">1</span>-a)
+    loss += <span class="n">0.25</span> * (F.l1_loss(ssf[:,<span class="n">3</span>:<span class="n">4</span>], trs[:,<span class="n">3</span>:<span class="n">4</span>], reduction=<span class="s">"none"</span>) * w2m).mean()
+    wtu = wud[:, T_UPPER_IDX] * (<span class="n">1</span>-a)
+    loss += <span class="n">1.0</span> * (F.l1_loss(suf[:,T_UPPER_IDX], tru_t, reduction=<span class="s">"none"</span>) * wtu).mean()</code></pre>
+<div class="box b"><div class="h">α 怎么调</div><p><code>--truth-alpha 0.5</code> = 教师/真值各半。α=1 纯蒸馏(回到天花板),α=0 纯真值(可能丢失教师的物理一致性)。<span class="hl">0.5 是表达力(像教师)和技能(超真值)的平衡点</span>。冲 W 可往 0.3–0.4 偏真值,但要盯着别把别的通道带歪。</p></div>
+
+<h3 id="loss-2">4.2 truth-windq:低层 u/v/q 也掺真值</h3>
+<p><strong>这段干啥:</strong>除温度外,把<strong>低层风(u/v 的 1000/925/850)+ 全层比湿 q + 10m 风</strong>也掺真值。这些是学生过平滑、丢高频的重灾区,补真值把高频细节找回来。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">distill_truth.py · L499–L506</span></div><code><span class="k">if</span> args.truth_windq:
+    widx = [<span class="n">39</span>,<span class="n">40</span>,<span class="n">41</span>, <span class="n">52</span>,<span class="n">53</span>,<span class="n">54</span>] + list(range(<span class="n">13</span>,<span class="n">26</span>))  <span class="c"># u低3 + v低3 + q全13</span>
+    wq = wud[:, widx] * (<span class="n">1</span>-a2)
+    loss += <span class="n">1.0</span> * (F.l1_loss(suf[:,widx], tru[:,widx], reduction=<span class="s">"none"</span>) * wq).mean()
+    w10 = wsd[:, <span class="n">1</span>:<span class="n">3</span>] * (<span class="n">1</span>-a2)        <span class="c"># u10/v10</span>
+    loss += <span class="n">0.25</span> * (F.l1_loss(ssf[:,<span class="n">1</span>:<span class="n">3</span>], trs[:,<span class="n">1</span>:<span class="n">3</span>], reduction=<span class="s">"none"</span>) * w10).mean()</code></pre>
+
+<h3 id="loss-3">4.3 truth-full15 + full-temp(防高空漂移)</h3>
+<p><strong>这段干啥:</strong>更激进的 <code>--truth-full15</code>:全 15 指标对应的<strong>所有通道都掺真值</strong>(直接学 ERA5,超 3 年前的教师)。配套 <code>--full-temp</code>:温度真值覆盖全部 13 层而不只近地面 3 层。<span class="hl">为什么要 full?只监督近地面会让高空温度"漂移"</span>——浅监督把近地面拉准、高空没人管就跑偏,净 W 反降。full 全层一起管住。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">distill_truth.py · L509–L516 + L174–L177</span></div><code><span class="k">if</span> args.full_temp: T_UPPER_IDX = T_UPPER_FULL   <span class="c"># 温度真值覆盖全13层(治高空漂移)</span>
+...
+<span class="k">if</span> args.truth_full15:
+    a3 = args.alpha_f15
+    loss += <span class="n">0.25</span> * (F.l1_loss(ssf, trs, reduction=<span class="s">"none"</span>) * wsd*(<span class="n">1</span>-a3)).mean()   <span class="c"># surf 全4 真值</span>
+    loss += <span class="n">1.0</span>  * (F.l1_loss(suf, tru, reduction=<span class="s">"none"</span>) * wud*(<span class="n">1</span>-a3)).mean()   <span class="c"># upper 全65 真值</span></code></pre>
+
+<h3 id="loss-4">4.4 高频谱损失(治 patch16 过平滑)</h3>
+<p><strong>这段干啥:</strong>patch16 把图压得狠,输出容易"低通过平滑"(丢小尺度)。谱损失在频域惩罚"预测 vs 真值"的高频幅度差(波数 &gt; kmin),逼模型还原中小尺度。<span class="hl">用 warmup 慢加权重</strong>,避免"谱损失 vs RMSE"梯度打架(谱要细节、RMSE 要平均,直接全开会冲突)。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">distill_truth.py · L517–L521 + hf_spec_loss L62–L83</span></div><code><span class="k">if</span> args.hfspec &gt; <span class="n">0</span>:
+    hw = args.hfspec * min(<span class="n">1.0</span>, (ep-start_ep+<span class="n">1</span>)/max(<span class="n">1</span>,args.hf_warmup))  <span class="c"># warmup 慢加</span>
+    loss += hw * hf_spec_loss(suf, tru, args.hf_kmin, bool(args.hf_ms))
+    loss += hw * hf_spec_loss(ssf, trs, args.hf_kmin, bool(args.hf_ms)) * <span class="n">0.25</span>
+<span class="c"># hf_spec_loss: rfft2 后,只在波数>kmin(或多尺度渐进)处惩罚 |幅度| 差,fp32 计算</span></code></pre>
+
+<h3 id="loss-5">4.5 protect / chanrw / DTP(防带歪 + 自动配权)</h3>
+<table>
+  <tr><th>开关</th><th>干啥</th></tr>
+  <tr><td><code>--protect 1.5</code></td><td>对 u/v + 位势 + msl 的<strong>蒸馏</strong>权重 ×倍数,强化它们对教师的锚定,<span class="hl">防温度真值训练通过共享 backbone 把它们带歪</span>。</td></tr>
+  <tr><td><code>--chan-reweight 2.5</code></td><td>针对性回收:低层 u/v + u10/v10 + q 上调,已追平的 t/z 降权(<code>--tz-scale 0.8</code>),把梯度花在弱通道。</td></tr>
+  <tr><td><code>--dtp 1</code>(默认开)</td><td>动态逐通道权重:按各通道的 L1 误差 EMA 自动调权(误差大的通道权重大),<code>clamp(0.3,3.0)</code> 后归一。自动版的 chanrw。</td></tr>
+</table>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">distill_truth.py · L544–L547(DTP 动态权重)</span></div><code><span class="k">if</span> args.dtp <span class="k">and</span> ch_l1_n &gt; <span class="n">0</span>:
+    ch_l1 = ch_l1_acc / ch_l1_n
+    ch_l1_ema = ch_l1 <span class="k">if</span> ch_l1_ema <span class="k">is</span> <span class="k">None</span> <span class="k">else</span> <span class="n">0.9</span>*ch_l1_ema + <span class="n">0.1</span>*ch_l1
+    dyn_w = (ch_l1_ema / ch_l1_ema.mean()).clamp(<span class="n">0.3</span>,<span class="n">3.0</span>); dyn_w = dyn_w/dyn_w.mean()</code></pre>
+
+<h2 class="chap" id="opt"><span class="cn">5</span>优化器 + lr 6e-5(真值微调的关键)<a href="#top" class="backtop">↑</a></h2>
+<p><strong>这段干啥:</strong>分组优化:2D 权重矩阵走 <strong>Muon</strong>(lr 0.02、momentum 0.99,对 2D 权重做正交化更新),其余(embed/norm/bias/patch/logit_scale)走 <strong>AdamW</strong>。warmup + cosine 退火;EMA 0.999(评估/保存用 EMA 权重);grad clip 1.0。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">distill_truth.py · L387–L400</span></div><code><span class="k">for</span> n,p <span class="k">in</span> student.named_parameters():
+    <span class="k">if</span> p.ndim==<span class="n">2</span> <span class="k">and</span> <span class="k">not</span> any(k <span class="k">in</span> n <span class="k">for</span> k <span class="k">in</span> (<span class="s">"patchembed"</span>,<span class="s">"recovery"</span>,<span class="s">"embed"</span>,<span class="s">"logit_scale"</span>)):
+        muon_p.append(p)        <span class="c"># 2D 权重 → Muon</span>
+    <span class="k">else</span>: adamw_p.append(p)      <span class="c"># 其余 → AdamW</span>
+opt_m = Muon(muon_p, lr=args.muon_lr, momentum=args.muon_momentum)
+opt_a = torch.optim.AdamW(adamw_p, lr=args.lr, weight_decay=args.wd, betas=(<span class="n">0.9</span>,<span class="n">0.95</span>))</code></pre>
+<div class="box a">
+  <div class="h">★为什么真值微调用 lr 6e-5(而不是从头的 6e-4)</div>
+  <p>真值监督<strong>不是从头训,是在已有 bo 权重上 resume 微调</strong>。微调要用<span class="hl">更低 lr(<code>--lr 6e-5</code>,约从头的 1/10)</span>,否则大 lr 会把已经学好的表征冲垮(尤其高层已追平教师的通道)。配合 resume,这就是"小步精修"——只把弱通道往真值方向推一点,不伤其余。记忆口诀:真值微调 = 低 lr + resume + 选优看真值。</p>
+</div>
+
+<h2 class="chap" id="sel"><span class="cn">6</span>★选优对真值,不是对教师(bo3b 的关键改动)<a href="#top" class="backtop">↑</a></h2>
+<p><strong>这段干啥:</strong>每个 epoch 后选"最优 ckpt"。<span class="hl">判优口径必须用"对真值的 RMSE"</strong>,而不是 <code>val_match</code>(对教师的匹配度)。因为真值监督的目标就是超真值——用 val_match 选会选到"最像教师"的(即被天花板锁死的),而不是"最超真值"的。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">distill_truth.py · L552–L558</span></div><code><span class="c"># 选优口径:对【真值】越好越优,而非 val_match(对教师)。</span>
+<span class="c"># sel = -(对真值温度总RMSE):RMSE 越小 → sel 越大 → 存为 best。</span>
+sel = -(r2m + (sum(rup)/max(<span class="n">1</span>,len(rup))))   <span class="c"># 2m_t + 温度层平均 RMSE</span>
+<span class="k">if</span> sel &gt; best:
+    best = sel
+    torch.save({<span class="s">"model_state_dict"</span>: ema.state_dict(), <span class="s">"cfg"</span>: _cfg, ...}, args.save)
+    <span class="f">print</span>(<span class="s">f"  [saved best] ... 2m_t={r2m:.3f}K"</span>)</code></pre>
+<div class="box r"><div class="h">判优铁律(决赛也适用)</div><p>真值监督一定要用真值口径选优。这正是 bo1→bo3b 的关键改动之一(+0.19)。<span class="hl">永远盯着"和评测一致的口径"判优,别被代理指标(val_match)骗</span>——L4 会讲怎么用 score15 把这个口径做准。</p></div>
+
+<h2 class="chap" id="resume"><span class="cn">7</span>resume 续训规则(补充训练一律 resume)<a href="#top" class="backtop">↑</a></h2>
+<p><strong>这段干啥:</strong>真值监督是在已有权重上续训。<span class="hl">加数据/加 epoch/换损失的补充训练,一律从上次权重 resume,绝不从头</strong>。代码区分两种 resume:① <code>--resume 外部权重</code>(换数据/破天花板)→ 调度从 ep0 重跑、best 清零;② 自动续上次 <code>ckpt</code> → 接着 epoch/best 继续。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">distill_truth.py · L369–L380</span></div><code>resume_from = args.resume <span class="k">if</span> (args.resume <span class="k">and</span> os.path.exists(args.resume)) <span class="k">else</span> (ckpt_path <span class="k">if</span> ...)
+<span class="k">if</span> resume_from:
+    rk = torch.load(resume_from, map_location=...); rsd = rk[<span class="s">"model_state_dict"</span>]
+    miss = student.load_state_dict(rsd, strict=<span class="k">False</span>)
+    <span class="k">if</span> <span class="k">not</span> args.resume == ckpt_path:    <span class="c"># 外部 resume → 从 ep0、best 清零</span>
+        start_ep = <span class="n">0</span>; best = -<span class="n">1e9</span>
+    <span class="k">else</span>:                            <span class="c"># 自动续 → 接 epoch/best</span>
+        start_ep = rk.get(<span class="s">"epoch"</span>,<span class="n">0</span>); best = rk.get(<span class="s">"best"</span>, -<span class="n">1.0</span>)</code></pre>
+<div class="box b"><div class="h">注意:同架构才能 resume</div><p><code>load_state_dict(strict=False)</code> 容忍少量键不匹配,但<strong>架构(embed/depths/heads/patch)必须一致</strong>才能 resume。换架构(升维/改层)要另起,不能 resume。物理头 <code>--phys</code> 是例外:新通道补 0 初始化,可在原 7 通道权重上 resume。</p></div>
+
+<h2 class="chap" id="run"><span class="cn">8</span>怎么训 + 怎么改适配<a href="#top" class="backtop">↑</a></h2>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash · abc66 onescience311(真值微调 bo3b 式)</span></div><code>ssh abc66; conda activate onescience311; cd /data2/pangu
+<span class="c"># 真值监督微调:低 lr + resume 已有权重 + 全温度层 + 选优看真值</span>
+PBASE=/data2/pangu/era5_cont PSTATS=.../ERA5_test PMETA=.../era5_real_meta.json \
+PCKPT=.../model_bak.pth \
+screen -dmS bo3b python distill_truth.py \
+  --years 1980 --epochs 30 --truth-alpha 0.5 --full-temp 1 --truth-windq 1 \
+  --lr 6e-5 --amp bf16 --resume bo_prev.pth --save bo3b.pth
+<span class="c"># ★后台必须 screen/tmux(断线不掉);训练日志看 [teacher天花板] 和每 ep 的 学生对真值 2m_t</span></code></pre>
+<table>
+  <tr><th>想干啥</th><th>怎么改</th></tr>
+  <tr><td>某通道仍弱</td><td>看日志 per-通道,开 <code>--truth-windq</code> 或 <code>--chan-reweight</code> 针对性补,或开 <code>--truth-full15</code>。</td></tr>
+  <tr><td>高空温度漂移</td><td><code>--full-temp 1</code>(全 13 层真值)。</td></tr>
+  <tr><td>输出太平滑(丢细节)</td><td><code>--hf-spec 0.1 --hf-warmup 5</code>(谱损失,慢加)。</td></tr>
+  <tr><td>训崩/带歪别的通道</td><td>调小 lr、加 <code>--protect 1.5</code>、α 往 1 偏一点(多信教师)。</td></tr>
+  <tr><td>RAM 不够</td><td><code>--disk-cache 目录</code> 落盘缓存,上全量数据。</td></tr>
+  <tr><td>fp16 激活溢出</td><td>加大 <code>--wd 0.15</code> 压权重,或训练用 bf16(默认),推理侧用 L1 的 ENC_FP32。</td></tr>
+</table>
+
+<h2 class="chap" id="hands"><span class="cn">9</span>动手实践清单<a href="#top" class="backtop">↑</a></h2>
+<div class="lab"><span class="lbl">动手实践 1 · smoke 跑通</span>先用极少数据/epoch 跑通流程:<code>python distill_truth.py --years 1980 --epochs 2 --max-cache 20 --truth-alpha 0.5</code>。确认能打印 <code>[teacher天花板]</code> 和每 ep 的 <code>学生对真值 2m_t</code>。</div>
+<div class="lab"><span class="lbl">动手实践 2 · 看真值监督起没起作用</span>对比两次 2-epoch 小跑:<code>--truth-alpha 1.0</code>(纯蒸馏)vs <code>--truth-alpha 0.5</code>(掺真值)。看后者的"学生对真值 2m_t"是否更接近/低于教师天花板。这就是真值监督的实物效果。</div>
+<div class="lab"><span class="lbl">动手实践 3 · 验证 resume 不从头</span>先训 2 ep 存 a.pth;再 <code>--resume a.pth --epochs 2</code> 续训,确认日志打印 <code>[resume] 从 a.pth 续训</code> 且初始 loss 明显低于从头(证明权重被接上)。</div>
+
+<h2 class="chap" id="sum"><span class="cn">收</span>小结:这一课你掌握了什么<a href="#top" class="backtop">↑</a></h2>
+<div class="box g">
+  <ul style="margin:4px 0 0;">
+    <li><strong>为什么真值监督</strong>:纯蒸馏有天花板(≤教师),掺真值才能超教师拿高 W。</li>
+    <li><strong>损失</strong>:α·教师 + (1−α)·真值;非温度纯蒸馏、温度/低层 u/v/q 掺真值(选择性);full-temp 防高空漂移;谱损失补细节;protect/chanrw/DTP 防带歪+自动配权。</li>
+    <li><strong>优化器</strong>:Muon(2D 权重)+ AdamW(其余);真值微调用 <strong>lr 6e-5</strong>(低 lr 不伤已学表征)。</li>
+    <li><strong>选优对真值</strong>:sel = −真值 RMSE,不是 val_match —— bo1→bo3b 的关键改动。</li>
+    <li><strong>resume</strong>:补充训练一律 resume(同架构);外部 resume 从 ep0/best 清零,自动续接 epoch/best。</li>
+  </ul>
+  <p style="margin-top:8px;">下一课 <strong>L4 · 评测</strong>:打开 <code>score15_fp32.py</code>,看怎么对真值 ERA5 算官方 15 指标(W15/W69 的 RMSE + ACC)、怎么打分、怎么和 bo3b 基线(对真值温度 RMSE 37.6276)判优——把本课"选优对真值"的口径做准。</p>
+</div>
+
+<footer>
+  <p>复赛备战 · 逐代码讲义 L3 · 训练(真值监督蒸馏)· 配套代码见 <code>复赛备战课程/最优项目代码/03_训练/distill_truth.py</code></p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

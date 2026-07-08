@@ -1,0 +1,1 @@
+curl -f -C - -o checkpoints.zip https://zzefile.scnet.cn:65011/efile/s/d/eGR6czIwMjZfYzI5Ng==/df02ccd7050fd1b0

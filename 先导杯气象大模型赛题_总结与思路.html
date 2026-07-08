@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>先导杯 · 气象大模型推理部署优化 — 赛题总结与技术思路</title>
+<style>
+  :root{
+    --ink:#1f2933; --sub:#52606d; --line:#e4e7eb; --soft:#f7f9fb;
+    --accent:#0e7490; --accent2:#0ea5b7; --warn:#b45309; --warnbg:#fff7ed;
+    --good:#15803d; --goodbg:#f0fdf4; --chip:#e6f4f6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:#ffffff; color:var(--ink);
+    font-family:"Microsoft YaHei","PingFang SC","Segoe UI",system-ui,sans-serif;
+    line-height:1.75; font-size:15.5px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:36px 30px 80px;}
+  header.top{border-bottom:3px solid var(--accent); padding-bottom:18px; margin-bottom:8px;}
+  .kicker{color:var(--accent); font-weight:700; letter-spacing:.08em; font-size:13px;}
+  h1{font-size:27px; margin:6px 0 4px; line-height:1.35;}
+  .lead{color:var(--sub); font-size:14.5px; margin:2px 0 0;}
+  h2{
+    font-size:20px; margin:42px 0 14px; padding-left:12px;
+    border-left:5px solid var(--accent); line-height:1.3;
+  }
+  h3{font-size:16.5px; margin:24px 0 8px; color:var(--ink);}
+  p{margin:8px 0;}
+  ul{margin:8px 0 8px; padding-left:22px;}
+  li{margin:5px 0;}
+  small{color:var(--sub);}
+  .muted{color:var(--sub);}
+  .grid{display:grid; gap:14px;}
+  .g2{grid-template-columns:1fr 1fr;}
+  .g3{grid-template-columns:1fr 1fr 1fr;}
+  @media(max-width:760px){.g2,.g3{grid-template-columns:1fr;}}
+  .card{
+    border:1px solid var(--line); border-radius:10px; padding:16px 18px;
+    background:#fff;
+  }
+  .card.soft{background:var(--soft);}
+  .card h4{margin:0 0 8px; font-size:15.5px;}
+  .chip{
+    display:inline-block; background:var(--chip); color:var(--accent);
+    border-radius:999px; padding:2px 11px; font-size:12.5px; font-weight:600;
+    margin:0 6px 6px 0;
+  }
+  .pill{
+    display:inline-block; border:1px solid var(--line); border-radius:6px;
+    padding:1px 8px; font-size:12.5px; color:var(--sub); margin:0 5px 5px 0;
+    background:#fff;
+  }
+  .score{
+    display:flex; align-items:baseline; gap:10px; border:1px solid var(--line);
+    border-radius:10px; padding:14px 16px; margin:10px 0; background:#fff;
+  }
+  .score .pts{
+    font-size:26px; font-weight:800; color:var(--accent); min-width:78px;
+  }
+  .score .body{flex:1;}
+  .score .body b{font-size:15.5px;}
+  .formula{
+    font-family:"Cambria Math","Times New Roman",Georgia,serif;
+    background:var(--soft); border:1px dashed var(--line); border-radius:8px;
+    padding:10px 14px; margin:8px 0; font-size:15px; overflow-x:auto;
+  }
+  .frac{display:inline-block; text-align:center; vertical-align:middle; margin:0 3px;}
+  .frac .n{display:block; border-bottom:1.3px solid var(--ink); padding:0 5px;}
+  .frac .d{display:block; padding:0 5px;}
+  sup{font-size:.72em;}
+  .note{
+    border-left:4px solid var(--warn); background:var(--warnbg);
+    border-radius:0 8px 8px 0; padding:11px 15px; margin:12px 0;
+  }
+  .good{
+    border-left:4px solid var(--good); background:var(--goodbg);
+    border-radius:0 8px 8px 0; padding:11px 15px; margin:12px 0;
+  }
+  .tl{list-style:none; padding-left:0; margin:10px 0;}
+  .tl li{
+    position:relative; padding:6px 0 6px 22px; border-left:2px solid var(--line);
+    margin-left:6px;
+  }
+  .tl li:before{
+    content:""; position:absolute; left:-7px; top:13px; width:11px; height:11px;
+    border-radius:50%; background:var(--accent); border:2px solid #fff;
+  }
+  .tl b{color:var(--accent);}
+  .phase{
+    border:1px solid var(--line); border-radius:10px; margin:12px 0; overflow:hidden;
+  }
+  .phase .h{
+    background:var(--soft); padding:10px 16px; font-weight:700; font-size:15.5px;
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .phase .h .tag{font-size:12px; font-weight:600; color:var(--accent); background:var(--chip); border-radius:999px; padding:2px 10px;}
+  .phase .b{padding:8px 18px 14px;}
+  a{color:var(--accent); text-decoration:none; border-bottom:1px solid #cfe7ec;}
+  .ref{margin:10px 0; padding:12px 16px; border:1px solid var(--line); border-radius:9px;}
+  .ref b{font-size:15px;}
+  .ref .why{color:var(--sub); font-size:13.5px; margin-top:3px;}
+  footer{margin-top:50px; padding-top:16px; border-top:1px solid var(--line); color:var(--sub); font-size:13px;}
+  .kv{display:flex; gap:10px; padding:5px 0; border-bottom:1px dotted var(--line);}
+  .kv:last-child{border-bottom:none;}
+  .kv .k{min-width:120px; color:var(--sub); font-weight:600;}
+  @media print{
+    .wrap{max-width:none; padding:0 6px;}
+    h2{break-after:avoid;} .card,.phase,.ref,.score{break-inside:avoid;}
+    a{color:var(--ink); border:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="kicker">2026 全国大学生计算机系统能力大赛 · 智能计算创新设计赛(先导杯)</div>
+  <h1>基于国产科学智算生态的气象大模型推理部署优化<br>赛题总结 · 技术思路 · 可参考项目</h1>
+  <p class="lead">材料来源:赛事章程(盖章版)+ 赛题二技术方案 · 整理于 2026-06-20</p>
+</header>
+
+<!-- ============ 1. 赛事概览 ============ -->
+<h2>一、赛事概览(章程要点)</h2>
+<div class="grid g2">
+  <div class="card soft">
+    <h4>基本信息</h4>
+    <div class="kv"><span class="k">赛道</span><span>智能计算创新设计赛(先导杯)</span></div>
+    <div class="kv"><span class="k">本赛题</span><span>赛题二:气象大模型推理部署优化(南开大学出题)</span></div>
+    <div class="kv"><span class="k">承办</span><span>曙光信息产业(Sugon)、同济大学</span></div>
+    <div class="kv"><span class="k">报名网站</span><span>pra.xtnl.org.cn</span></div>
+    <div class="kv"><span class="k">队伍规模</span><span>1–4 人,最多 2 名指导老师</span></div>
+    <div class="kv"><span class="k">费用</span><span>全免;算力/软硬件资源由组委会免费发放</span></div>
+  </div>
+  <div class="card soft">
+    <h4>关键时间线</h4>
+    <ul class="tl">
+      <li><b>6/15</b> 报名截止</li>
+      <li><b>6/20 前后</b> 开通比赛账号、发放算力,初赛开始</li>
+      <li><b>6/20 → 7/15</b> 初赛(线上),含技术培训</li>
+      <li><b>7/15 12:00</b> 初赛作品提交截止</li>
+      <li><b>7/15 → 7/31</b> 初赛评审,公布决赛名单</li>
+      <li><b>8/12 → 8/15</b> 线下决赛:比赛 + 现场答辩 + 颁奖</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px;">
+  <h4>奖项(按赛题单独设奖)</h4>
+  <p>
+    <span class="pill">一等奖 2 名 · 团队 5 万元</span>
+    <span class="pill">二等奖 5 名 · 团队 3 万元</span>
+    <span class="pill">三等奖 16 名 · 团队 8000 元</span>
+    <span class="pill">指导教师:优秀指导教师证书</span>
+  </p>
+  <p class="muted" style="margin-bottom:0;">奖金均为税前;各级奖项可空缺。最终成绩 = 初赛分 + 决赛各环节综合分。</p>
+</div>
+
+<!-- ============ 2. 赛题任务 ============ -->
+<h2>二、赛题任务到底要做什么</h2>
+<div class="card">
+  <p style="margin-top:0;">
+    在国产科学智算平台 <b>OneScience</b>(配套 OneSkills 知识/能力库)与<b>国产加速卡</b>上,
+    对官方 <b>pangu-weather(盘古气象)大模型</b>做<b>轻量化 + 推理性能优化</b>,
+    用<b>隐藏测试集做黑盒评测</b>:在<b>预测精度基本不掉</b>的前提下,把模型变小、显存占用变低、推理变快。
+  </p>
+  <p>
+    背景动机是把气象大模型部署到<b>低轨卫星(星上推理)</b>——载荷、功耗、算力都受限,所以"又小又快又准"才是核心目标。
+  </p>
+  <div class="grid g3" style="margin-top:10px;">
+    <div class="card soft"><h4>目标模型</h4><p class="muted" style="margin:0;">pangu-weather 全量权重(3D Earth-Specific Transformer,0.25° 全球网格)。组委会提供其训练/推理源码与全量权重。</p></div>
+    <div class="card soft"><h4>数据</h4><p class="muted" style="margin:0;">ERA5 训练集 + 验证集 + 示例数据集;隐藏测试集仅用于评测,选手不可访问。</p></div>
+    <div class="card soft"><h4>硬件</h4><p class="muted" style="margin:0;">指定版 X86 处理器 + 国产加速卡 1 张(承办为曙光,工具链为 HIP/DTK,<b>推测为海光 DCU</b>,以官方为准)。</p></div>
+  </div>
+</div>
+
+<h3>软件环境(已锁版本,务必对齐)</h3>
+<p>
+  <span class="chip">OneScience 0.3.0</span>
+  <span class="chip">python 3.11</span>
+  <span class="chip">torch 2.5.1</span>
+  <span class="chip">onnx 1.21.0</span>
+  <span class="chip">onnxsim 0.6.3</span>
+  <span class="chip">onnxconverter-common 1.16.0</span>
+  <span class="chip">tensorly 0.9.0</span>
+  <span class="chip">torch-pruning 1.6.1</span>
+</p>
+<div class="good">
+  <b>强信号:</b>组委会预装的库几乎"指明了路线"——<b>onnx / onnxsim / onnxconverter-common</b>(图简化 + FP16 转换)、
+  <b>torch-pruning</b>(结构化剪枝)、<b>tensorly</b>(张量分解)。这三条线就是出题人期望你用的轻量化武器。
+</div>
+
+<!-- ============ 3. 评分标准 ============ -->
+<h2>三、评分标准拆解(初赛 100 分)</h2>
+<p>初赛总分 = <b>U(轻量化 40)</b> + <b>V(推理时长 20)</b> + <b>W(预测性能 40)</b>,全部基于隐藏测试集黑盒评测。</p>
+
+<div class="score">
+  <div class="pts">U · 40</div>
+  <div class="body">
+    <b>模型轻量化:体积 20 + 显存 20</b>
+    <div class="formula">
+      U = (1 −
+      <span class="frac"><span class="n">轻量模型大小</span><span class="d">原模型大小</span></span>)<sup>i</sup> × 20
+      &nbsp;+&nbsp; (1 −
+      <span class="frac"><span class="n">轻量模型显存占用</span><span class="d">原模型显存占用</span></span>)<sup>j</sup> × 20
+    </div>
+    <small>"模型大小"= 解压后目录总大小 + 权重文件大小之和(含权重、配置、推理静态数据、查表文件等全部必需文件)。压缩越狠得分越高。</small>
+  </div>
+</div>
+
+<div class="score">
+  <div class="pts">V · 20</div>
+  <div class="body">
+    <b>推理时长:越快越高</b>
+    <div class="formula">
+      S =
+      <span class="frac"><span class="n">原模型平均样本推理时长</span><span class="d">轻量模型平均样本推理时长</span></span>
+      &nbsp;;&nbsp; V = (1 − <span class="frac"><span class="n">1</span><span class="d">S</span></span>)<sup>k</sup> × 20
+    </div>
+    <small>"样本推理时长"= 样本加载到加速卡后 → 得到预测结果这一段。加速比 S 越大,V 越接近 20。<b>计时相关代码禁止修改。</b></small>
+  </div>
+</div>
+
+<div class="score">
+  <div class="pts">W · 40</div>
+  <div class="body">
+    <b>预测性能:RMSE 与 ACC 双指标</b>
+    <div class="formula">
+      W =
+      <span class="frac"><span class="n">1</span><span class="d">N</span></span>
+      Σ<sub>t</sub> [ max{(<span class="frac"><span class="n">原 RMSE<sub>t</sub></span><span class="d">轻量 RMSE<sub>t</sub></span></span>)<sup>l</sup>, 1}
+      + max{(<span class="frac"><span class="n">轻量 ACC<sub>t</sub></span><span class="d">原 ACC<sub>t</sub></span></span>)<sup>m</sup>, 1} ] × 20
+    </div>
+    <small>对每个气象指标 t 计算,再平均。精度<b>持平基线 ≈ 40 分,超过基线还能更高</b>。RMSE=均方根误差(越小越好),ACC=距平相关系数(越大越好)。</small>
+  </div>
+</div>
+
+<div class="card soft">
+  <h4>W 评测覆盖的气象指标</h4>
+  <p style="margin:0;">
+    <span class="pill">mean_sea_level_pressure</span><span class="pill">10m_u_wind</span><span class="pill">10m_v_wind</span><span class="pill">2m_temperature</span>
+    <span class="pill">geopotential 850/700/500</span><span class="pill">specific_humidity 850/700/500</span>
+    <span class="pill">temperature 850/700/500</span><span class="pill">u_wind_500</span><span class="pill">v_wind_500</span>
+  </p>
+</div>
+
+<div class="note">
+  <b>策略含义:</b>i, j, k, l, m 为权重参数(官方设定,影响曲线陡峭度)。U+V 是"压缩/加速"得分,
+  能明确靠技术换分;W 的核心是<b>守住精度别掉</b>(理想是持平甚至略超基线)。
+  因此最优解是在<b>"压得最狠 / 跑得最快 / 精度不塌"</b>之间找 Pareto 最优点,而不是单维度极端。
+</div>
+
+<!-- ============ 4. 红线 ============ -->
+<h2>四、规则红线(踩中直接出局/扣分)</h2>
+<div class="grid g2">
+  <div class="card">
+    <h4 style="color:var(--warn);">❌ 绝对禁止</h4>
+    <ul>
+      <li>修改基准测试中<b>计时相关代码</b>、改动标注"不可修改"的参数</li>
+      <li>篡改/替换测试集,访问、推断、缓存<b>隐藏测试集</b></li>
+      <li>使用<b>外部气象数据、其他气象模型权重、外部预训练权重</b>或可直接产出气象预测的外部模型</li>
+      <li>调用未授权在线服务、闭源二进制、外部大模型接口、不可审计的自动化工具来完成压缩/替换/出结果</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4 style="color:var(--good);">✅ 明确允许</h4>
+    <ul>
+      <li>对官方模型做<b>剪枝、量化、蒸馏、结构压缩、推理优化</b></li>
+      <li>设计 student 模型,但必须<b>基于组委会数据 + 基准模型</b>训练/蒸馏得到</li>
+      <li>使用环境内提供的开源库与通用优化工具,结合<b>气象学先验</b>优化</li>
+      <li>用大模型(Prompt/Skill)辅助开发,但需在<b>代码注释、文档、答辩</b>中说明,且能讲清原理</li>
+    </ul>
+  </div>
+</div>
+<div class="note" style="border-left-color:#b45309;">
+  其他硬性要求:代码重复率 ≥ 50% 判抄袭;所有第三方代码/工具/配置必须在 <b>README 头部 + 文档</b>标注;
+  提交内容须在指定环境<b>可复现、通过自动化黑盒测试</b>。提交物 = 轻量模型训练+推理优化源码 + 轻量模型权重 + 优化说明文档。
+</div>
+
+<!-- ============ 5. 技术思路 ============ -->
+<h2>五、技术路线与推进节奏</h2>
+<p class="muted">建议按"先量基线 → 摘低垂果实 → 结构压缩 → 蒸馏小模型 → 精度回补"分阶段推进,每阶段都用评测脚本量化收益。</p>
+
+<div class="phase">
+  <div class="h">阶段 0 · 基线与摸底 <span class="tag">最优先</span></div>
+  <div class="b">
+    <ul>
+      <li>跑通 OneScience + pangu-weather <b>全量推理</b>,精确测准<b>原模型大小、显存峰值、单样本推理时长、各指标 RMSE/ACC</b>——这些是 U/V/W 所有分数的"分母",测不准后面全错。</li>
+      <li>读穿评测脚本:<b>计时段如何定义</b>、哪些代码/参数不可改、显存如何统计、模型大小如何统计(目录+权重双口径)。</li>
+      <li>看清 pangu-weather 结构:3D Earth-Specific Transformer、patch embedding、窗口注意力、多 lead-time 子模型,定位<b>参数/计算/显存热点</b>。</li>
+    </ul>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="h">阶段 1 · 低成本高收益 <span class="tag">先拿分</span></div>
+  <div class="b">
+    <ul>
+      <li><b>半精度(FP16/BF16)推理</b>:用 onnxconverter-common 做 FP16 转换 → 体积 ↓约 50%、显存 ↓约 50%、速度 ↑,精度几乎不变 → 直接把 U、V 拉起来。</li>
+      <li><b>ONNX 导出 + onnxsim 图简化 + 算子融合</b>:去冗余节点、常量折叠,降低显存与延迟。</li>
+      <li><b>国产加速卡图推理引擎编译优化</b>(类 TensorRT 的 MIGraphX / DCU 推理栈):算子融合、kernel 自动调优、内存复用。</li>
+    </ul>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="h">阶段 2 · 结构压缩 <span class="tag">主战场</span></div>
+  <div class="b">
+    <ul>
+      <li><b>结构化剪枝(torch-pruning / DepGraph)</b>:裁剪 MLP/注意力通道、减层、减窗口,显著降体积+显存+延迟;剪后需微调恢复精度。</li>
+      <li><b>张量/低秩分解(tensorly:Tucker / CP / TT)</b>:分解大线性层与卷积核,压参数、减乘加。</li>
+      <li><b>量化</b>:先 PTQ(INT8/混合精度),精度掉太多再上 QAT(量化感知训练)。</li>
+      <li>可组合:剪枝 + 分解 + 量化叠加,边压边用评测脚本看 U/V/W 的净变化。</li>
+    </ul>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="h">阶段 3 · 蒸馏小模型 <span class="tag">冲高分</span></div>
+  <div class="b">
+    <ul>
+      <li>设计更小的 <b>student</b>(更窄/更浅的 3DEST、更大 patch 或更少 lead-time 子模型),用 <b>ERA5 + teacher 输出</b>做知识蒸馏。</li>
+      <li><b>输出级 + 特征级蒸馏</b>结合;按<b>气象先验加权</b>(重点指标/关键气压层/误差敏感区域权重更高),把精度集中保在评测的 15 个指标上。</li>
+      <li>合规关键:student 必须从组委会数据/基准模型训练或蒸馏得到,不得换成任何外部预训练权重。</li>
+    </ul>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="h">阶段 4 · 精度回补与 Pareto 调参 <span class="tag">收尾</span></div>
+  <div class="b">
+    <ul>
+      <li>微调/蒸馏回补精度,守住 <b>W ≈ 40</b>(理想略超基线);避免为压缩牺牲过多 RMSE/ACC。</li>
+      <li>针对官方权重 i,j,k,l,m 的曲线特性,扫多组压缩率,画 <b>压缩率 × 精度</b> Pareto 前沿,选总分最高的点。</li>
+      <li><b>显存专项</b>:batch=1、激活 FP16、in-place 算子、<b>分块/patch 推理</b>、清理推理期无用缓存——单独压 U 的显存那 20 分。</li>
+    </ul>
+  </div>
+</div>
+
+<div class="good">
+  <b>贯穿全程:</b>① 固定随机种子 + 锁环境(Docker/版本)保证<b>可复现</b>;② README 头部标注所有第三方;
+  ③ 大模型辅助处加注释;④ 每次改动都跑评测脚本记录 U/V/W,用数据驱动取舍,而不是凭感觉。
+</div>
+
+<!-- ============ 6. 可参考项目 ============ -->
+<h2>六、可参考的项目 / 论文 / 工具</h2>
+
+<h3>气象大模型(理解结构与同类轻量化思路)</h3>
+<div class="ref"><b>Pangu-Weather(华为,Bi et al., Nature 2023)</b><div class="why">本赛题目标模型。官方发布 3D Earth-Specific Transformer 结构、推理代码与 ONNX 模型——优先吃透其结构与基线,定位可压缩点。</div></div>
+<div class="ref"><b>FourCastNet(NVIDIA,AFNO)/ GraphCast(DeepMind,GNN)</b><div class="why">同代全球气象大模型的不同架构,参考其在分辨率、谱方法、图结构上的轻量与多尺度设计思路。</div></div>
+<div class="ref"><b>FengWu / FuXi / 风乌·伏羲(上海AI Lab / 复旦)</b><div class="why">国产气象大模型,关注其在中期预报精度与效率上的工程取舍,可借鉴其 loss 加权与级联策略。</div></div>
+<div class="ref"><b>WeatherBench 2(评测基准)</b><div class="why">RMSE / ACC 等气象预测指标的标准定义与评测口径参考,帮助理解 W 的计算逻辑。</div></div>
+
+<h3>压缩与加速工具(组委会已预装,优先用)</h3>
+<div class="ref"><b>Torch-Pruning(VainF,DepGraph CVPR 2023)</b><div class="why">结构化剪枝主力,自动处理层间依赖,直接降体积/显存/延迟。版本 1.6.1 已装。</div></div>
+<div class="ref"><b>TensorLy</b><div class="why">张量分解(Tucker / CP / Tensor-Train),压缩线性层与卷积权重。版本 0.9.0 已装。</div></div>
+<div class="ref"><b>ONNX + onnxsim + onnxconverter-common</b><div class="why">图导出、图简化(算子融合/常量折叠)、FP16 转换——阶段 1 拿分的核心三件套。</div></div>
+
+<h3>国产加速卡生态(部署落地)</h3>
+<div class="ref"><b>海光 DCU 工具链:DTK / HIP / MIGraphX</b><div class="why">DTK 为 DCU 软件栈,HIP 为编程模型,MIGraphX 为类 TensorRT 的图推理引擎(算子融合 + 自动调优)。比赛网站提供 HIP 规范与 DTK 使用说明,务必先读。</div></div>
+<div class="ref"><b>OneScience 0.3.0 + OneSkills(曙光 AI4S 平台)</b><div class="why">比赛运行底座,所有优化须在其上复现;OneSkills 用于 Prompt/Skill 人机协同提效。</div></div>
+
+<h3>方法论(知识蒸馏 / 量化)</h3>
+<div class="ref"><b>知识蒸馏:Hinton KD(输出蒸馏)、FitNets(特征蒸馏)</b><div class="why">阶段 3 设计 student 的方法基础;结合气象先验做加权蒸馏。</div></div>
+<div class="ref"><b>PyTorch 量化(PTQ / QAT)</b><div class="why">INT8 与混合精度量化标准流程,精度掉太多时切 QAT 回补。</div></div>
+
+<!-- ============ 7. 风险/取胜 ============ -->
+<h2>七、取胜要点小结</h2>
+<div class="grid g2">
+  <div class="card soft">
+    <h4>容易丢分的坑</h4>
+    <ul>
+      <li>基线没测准 → 所有比值全偏</li>
+      <li>误改计时代码 / 不可改参数 → 判违规</li>
+      <li>不可复现(环境、随机性)→ 自动化测试跑不出</li>
+      <li>只追压缩率,精度塌方 → W 拉低拖垮总分</li>
+      <li>第三方未标注 → 学术诚信问题</li>
+    </ul>
+  </div>
+  <div class="card soft">
+    <h4>拉开差距的关键</h4>
+    <ul>
+      <li>FP16 + 图优化先稳吃 U/V 基础分</li>
+      <li>剪枝/分解/量化<b>组合</b>而非单点</li>
+      <li>蒸馏 student + 气象先验加权,精度持平甚至超基线</li>
+      <li>针对 i,j,k,l,m 做 Pareto 调参选最优点</li>
+      <li>显存专项优化单独抠那 20 分</li>
+      <li>文档写透"设计逻辑 + 技术细节",决赛答辩讲得清</li>
+    </ul>
+  </div>
+</div>
+
+<footer>
+  本页基于《先导杯章程(盖章版)》与《赛题二技术方案》整理,用于团队选题与技术规划参考。
+  具体硬件型号、权重参数 i/j/k/l/m、评测细节以组委会官方发布(pra.xtnl.org.cn 及"计算机系统能力培养"公众号)为准。
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L5 蒸馏主路径:知识蒸馏 + 双损失 DTP</title>
+<style>
+  :root{
+    --ink:#1e232a; --ink2:#3b444e; --mut:#6b7480; --line:#e7e9ec;
+    --paper:#ffffff; --band:#f6f8fa; --accent:#1d6fb8; --accent2:#b45309;
+    --u:#0e7490; --v:#7c3aed; --w:#b91c1c; --good:#15803d; --warn:#a16207;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.9;font-size:16.5px;letter-spacing:.1px}
+  .wrap{max-width:940px;margin:0 auto;padding:0 24px 100px}
+  header.hero{padding:48px 24px 30px;border-bottom:3px solid var(--w);background:linear-gradient(180deg,#fff9f9,#fff)}
+  .hero-inner{max-width:940px;margin:0 auto}
+  .course{color:var(--w);font-weight:700;letter-spacing:2px;font-size:13px}
+  .lnum{display:inline-block;background:var(--w);color:#fff;font-weight:800;border-radius:8px;padding:2px 12px;font-size:14px;margin-right:8px}
+  h1{font-size:30px;line-height:1.32;margin:12px 0 8px}
+  .sub{color:var(--mut);font-size:16px;max-width:820px}
+  .pills{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap}
+  .pill{background:var(--band);border:1px solid var(--line);border-radius:999px;padding:5px 13px;font-size:13px;color:var(--ink2)}
+  .pill b{color:var(--w)}
+  h2{font-size:24px;margin:52px 0 10px;padding-top:12px;border-top:1px solid var(--line)}
+  h2 .n{display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;border-radius:9px;background:var(--w);color:#fff;font-size:17px;margin-right:12px;vertical-align:3px}
+  h3{font-size:19px;margin:28px 0 6px;color:var(--ink)}
+  h4{font-size:15.5px;margin:18px 0 4px;color:var(--accent2);letter-spacing:.3px}
+  p{margin:11px 0} .lead{font-size:17.5px;color:var(--ink2)}
+  em{font-style:normal;background:linear-gradient(transparent 60%,#fde68a 60%);padding:0 1px;font-weight:600}
+  b.k{color:var(--w)}
+  code{background:#f1f4f7;border:1px solid #e4e8ec;border-radius:5px;padding:1px 6px;font-family:"Cascadia Code",Consolas,monospace;font-size:13.5px;color:#0b5563}
+  ul,ol{margin:11px 0;padding-left:24px} li{margin:8px 0}
+  .band{background:var(--band);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:22px 0}
+  .callout{border-left:5px solid var(--w);background:#fef5f5;border-radius:0 12px 12px 0;padding:15px 19px;margin:20px 0}
+  .callout.good{border-color:var(--good);background:#f1fcf5}
+  .callout.warn{border-color:var(--warn);background:#fffdf3}
+  .callout.blue{border-color:var(--accent);background:#f0f7fd}
+  .callout .t{font-weight:700;margin-bottom:3px;letter-spacing:.3px}
+  figure{margin:26px 0;text-align:center}
+  figure svg{max-width:100%;height:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+  figcaption{color:var(--mut);font-size:13.5px;margin-top:10px}
+  .fx{font-family:"Cambria Math","Times New Roman",serif;font-style:italic;font-size:16.5px}
+  .card{border:1px solid var(--line);border-radius:14px;padding:16px 19px;background:#fff;margin:14px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:18px 0}
+  @media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}}
+  .bva{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:16px 0}
+  .bva>div{padding:14px 17px}
+  .bva .base{background:#fbfbfc;border-right:1px solid var(--line)}
+  .bva .up{background:#f1fcf5}
+  .bva h4{margin-top:0}
+  .bva .base h4{color:var(--mut)} .bva .up h4{color:var(--good)}
+  @media(max-width:720px){.bva{grid-template-columns:1fr}.bva .base{border-right:none;border-bottom:1px solid var(--line)}}
+  .hipbox{border:1px dashed #b45309;background:#fffdf6;border-radius:12px;padding:15px 19px;margin:20px 0}
+  .hipbox .t{color:var(--accent2);font-weight:700;letter-spacing:.5px}
+  .toc{columns:2;gap:20px;margin:16px 0;font-size:14.5px}
+  @media(max-width:720px){.toc{columns:1}}
+  .toc a{color:var(--w);text-decoration:none} .toc a:hover{text-decoration:underline}
+  .foot{margin-top:60px;padding-top:20px;border-top:3px solid var(--w);color:var(--mut);font-size:13.5px}
+  .keypts{background:linear-gradient(180deg,#fef5f5,#fff);border:1px solid #f3cfcf;border-radius:14px;padding:18px 22px;margin:24px 0}
+  .keypts li{margin:9px 0}
+  .codeblk{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px 16px;font-family:"Cascadia Code",Consolas,monospace;font-size:12.8px;line-height:1.75;overflow-x:auto;margin:14px 0;white-space:pre-wrap}
+  .codeblk .c{color:#7d8aa3} .codeblk .kw{color:#7dd3fc} .codeblk .s{color:#fca5a5} .codeblk .g{color:#86efac}
+  .math{border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;margin:16px 0;overflow:hidden}
+  .math .hd{background:#1e293b;color:#e2e8f0;font-size:13px;font-weight:700;letter-spacing:1px;padding:6px 15px}
+  .math .bd{padding:13px 18px;font-size:15px}
+  .math .eq{font-family:"Cambria Math","Times New Roman",serif;font-size:18px;text-align:center;margin:12px 0;color:#0f172a}
+  .ref{border:1px solid var(--line);border-left:4px solid var(--good);border-radius:10px;margin:16px 0;overflow:hidden}
+  .ref .rh{background:#f1fcf5;padding:9px 16px;font-weight:700;color:var(--good);font-size:15px;border-bottom:1px solid var(--line)}
+  .ref .rb{padding:12px 16px}
+  .ref .row{margin:7px 0;font-size:14.5px}
+  .ref .lab{display:inline-block;min-width:78px;font-weight:700;color:var(--accent2);font-size:12.5px;vertical-align:top}
+  .mx{border:1px solid var(--line);border-radius:12px;padding:15px 19px;margin:13px 0;background:#fff;border-left:4px solid var(--w)}
+  .mx .mt{font-weight:700;font-size:16.5px;color:var(--ink);margin-bottom:2px}
+  .mx .mt .pin{font-size:11.5px;color:#fff;background:var(--mut);border-radius:5px;padding:1px 8px;margin-left:8px;vertical-align:2px;font-weight:700}
+  .mx p{margin:7px 0;font-size:14.5px;line-height:1.85}
+  .mx .eqi{font-family:"Cambria Math","Times New Roman",serif;font-style:italic;background:#f1f5f9;border-radius:6px;padding:1px 7px;font-size:14.5px;color:#0f172a}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <div class="course">先导杯 · 气象大模型轻量化 · 各模块升级优化 10 讲 · 攻 W 三部曲之一</div>
+    <h1><span class="lnum">L5</span>蒸馏主路径:知识蒸馏 + 双损失 DTP</h1>
+    <p class="sub">骨架(L3)和零件(L4)都齐了,开始<b>训练</b>。这一课讲学生怎么学:先用<b>知识蒸馏</b>照着教师学、守住 W 大盘,
+      再用 <b>DTP 双损失</b>掺进真值——<em>这是突破"学生永远打不过教师"这道天花板的第一刀,也是 W 从 35.63 一路攻到 38.44 的起点。</em></p>
+    <div class="pills">
+      <span class="pill"><b>知识蒸馏</b> 照教师学</span>
+      <span class="pill"><b>DTP</b> α·教师 + (1−α)·真值</span>
+      <span class="pill"><b>官方加权 L1</b></span>
+      <span class="pill">教师冻结 · EMA · bf16</span>
+      <span class="pill">双指标早停</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<div class="band">
+  <b class="k">本课地图</b>
+  <div class="toc">
+    <a href="#s1">① 为什么蒸馏是主线</a><br>
+    <a href="#s2">② 蒸馏 vs 从头对真值训</a><br>
+    <a href="#s3">③ DTP 双损失(核心·破天花板起点)</a><br>
+    <a href="#s4">④ 官方加权 L1(对标评分口径)</a><br>
+    <a href="#s5">⑤ 教师冻结与软标签</a><br>
+    <a href="#s6">⑥ 训练框架(AdamW/EMA/bf16/检查点)</a><br>
+    <a href="#s7">⑦ 双指标早停(判优看真值)</a><br>
+    <a href="#s8">⑧ HIP 视角 + 本课要点</a>
+  </div>
+</div>
+
+<!-- 1 -->
+<h2 id="s1"><span class="n">1</span>为什么蒸馏是主线</h2>
+<p class="lead">回到 L1 的设计哲学:<em>用够小够快的学生拿 U/V,用蒸馏对齐教师守 W</em>。这门课攻 W 的第一步,就是<b>知识蒸馏</b>——让 5.19M 的小学生"照着" 64.22M 的大教师学。</p>
+<p>直觉:如果直接拿小学生去对着真值从零训,它容量太小、任务太难,很容易学不动或学歪。而教师已经把这个难任务学得很好了——<b>让学生模仿教师的输出</b>,等于站在教师肩膀上,用小规模就能逼近大模型的表达力。这就是"蒸馏":把大模型的知识"蒸"进小模型。</p>
+
+<!-- 2 -->
+<h2 id="s2"><span class="n">2</span>蒸馏 vs 从头对真值训</h2>
+<div class="bva">
+  <div class="base"><h4>baseline:小学生直接对真值从头训</h4>
+    <p style="margin:6px 0">监督信号只有<b>真值</b>(t+6h 真实场)。但真值是"硬标签"——只告诉学生"正确答案是这个数",没告诉它<em>大气各处该怎么协同</em>。小容量学生独自啃这个高维强耦合任务,收敛慢、易学歪。</p></div>
+  <div class="up"><h4>升级:先蒸馏教师(软标签)</h4>
+    <p style="margin:6px 0">教师输出是<b>平滑的"软标签"</b>,隐含了大量"大气各变量之间怎么配合"的结构信息(比 0/1 硬标签富得多)。学生模仿教师,相当于教师把"该怎么想"手把手教给它,收敛快、学得稳,先把 W 的大盘守住。</p></div>
+</div>
+<div class="callout blue"><div class="t">但蒸馏有个天花板</div>
+  <p style="margin:6px 0">纯蒸馏的目标是"<em>越像教师越好</em>"。这意味着学生最好也就<b>逼近教师</b>——学生的精度<b>永远 ≤ 教师</b>(RMSE 永远 ≥ 教师)。要想<em>超过</em>教师,光模仿不够,必须再引入别的信号。这就引出了第 3 节的 DTP 双损失。</p></div>
+
+<!-- 3 -->
+<h2 id="s3"><span class="n">3</span>DTP 双损失:破天花板的起点</h2>
+<p class="lead">DTP(双路深监督)的思想极简:<b>一边学教师,一边学真值</b>,两个损失加权求和。</p>
+<div class="band" style="text-align:center;font-size:19px">
+  <span class="fx">loss = α · L<sub>蒸馏</sub>(学生, 教师输出) + (1−α) · L<sub>真值</sub>(学生, t+6h 真实场)</span>
+  <div style="font-size:14px;color:var(--mut);margin-top:8px">α = 0.5:一半照教师学(守表达力)、一半照真值学(拿真本事)</div>
+</div>
+
+<figure>
+<svg viewBox="0 0 900 300" role="img" aria-label="DTP双损失数据流与破天花板">
+  <defs><marker id="a5" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
+  <text x="24" y="28" font-size="16" font-weight="700" fill="#1e232a">DTP 双损失:学生一次输出,同时被教师和真值两路监督</text>
+  <!-- input -->
+  <rect x="30" y="120" width="90" height="50" rx="9" fill="#f6f8fa" stroke="#cbd5e1"/><text x="75" y="142" font-size="12" fill="#3b444e" text-anchor="middle">当前场 t</text><text x="75" y="159" font-size="10.5" fill="#6b7480" text-anchor="middle">[B,72,...]</text>
+  <!-- student -->
+  <rect x="165" y="115" width="120" height="60" rx="10" fill="#ecfeff" stroke="#0e7490"/><text x="225" y="140" font-size="13" font-weight="700" fill="#0e7490" text-anchor="middle">学生 5.19M</text><text x="225" y="159" font-size="10.5" fill="#6b7480" text-anchor="middle">(要训练)</text>
+  <line x1="120" y1="145" x2="163" y2="145" stroke="#94a3b8" stroke-width="2" marker-end="url(#a5)"/>
+  <!-- student output -->
+  <rect x="330" y="120" width="90" height="50" rx="9" fill="#fff" stroke="#0e7490"/><text x="375" y="150" font-size="12" fill="#0e7490" text-anchor="middle">学生预测</text>
+  <line x1="285" y1="145" x2="328" y2="145" stroke="#94a3b8" stroke-width="2" marker-end="url(#a5)"/>
+  <!-- two paths -->
+  <!-- teacher -->
+  <rect x="500" y="55" width="120" height="52" rx="10" fill="#fef2f2" stroke="#b91c1c"/><text x="560" y="78" font-size="12.5" font-weight="700" fill="#b91c1c" text-anchor="middle">教师 Pangu(冻结)</text><text x="560" y="96" font-size="10.5" fill="#6b7480" text-anchor="middle">软标签</text>
+  <line x1="120" y1="130" x2="120" y2="81" stroke="#cbd5e1" stroke-width="1.5"/><line x1="120" y1="81" x2="498" y2="81" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#a5)"/>
+  <text x="300" y="74" font-size="10.5" fill="#9ca3af">同一输入也喂教师</text>
+  <!-- distill loss -->
+  <path d="M420,135 C455,120 460,100 498,90" stroke="#b91c1c" stroke-width="2" fill="none" marker-end="url(#a5)"/>
+  <rect x="660" y="55" width="200" height="52" rx="10" fill="#fef2f2" stroke="#b91c1c"/><text x="760" y="78" font-size="12.5" font-weight="700" fill="#b91c1c" text-anchor="middle">α · L蒸馏(对教师)</text><text x="760" y="96" font-size="10.5" fill="#6b7480" text-anchor="middle">守住"像教师"的表达力</text>
+  <line x1="620" y1="81" x2="658" y2="81" stroke="#94a3b8" stroke-width="2" marker-end="url(#a5)"/>
+  <!-- truth -->
+  <rect x="500" y="200" width="120" height="52" rx="10" fill="#dcfce7" stroke="#16a34a"/><text x="560" y="223" font-size="12.5" font-weight="700" fill="#15803d" text-anchor="middle">真值 t+6h</text><text x="560" y="241" font-size="10.5" fill="#6b7480" text-anchor="middle">ERA5 真实场</text>
+  <path d="M420,155 C455,175 460,200 498,215" stroke="#16a34a" stroke-width="2" fill="none" marker-end="url(#a5)"/>
+  <rect x="660" y="200" width="200" height="52" rx="10" fill="#dcfce7" stroke="#16a34a"/><text x="760" y="223" font-size="12.5" font-weight="700" fill="#15803d" text-anchor="middle">(1−α) · L真值(对真实)</text><text x="760" y="241" font-size="10.5" fill="#6b7480" text-anchor="middle">拿"超教师"的真本事</text>
+  <line x1="620" y1="226" x2="658" y2="226" stroke="#94a3b8" stroke-width="2" marker-end="url(#a5)"/>
+  <!-- sum note -->
+  <text x="760" y="160" font-size="13" font-weight="700" fill="#1e232a" text-anchor="middle">loss = 两路相加</text>
+  <text x="760" y="178" font-size="11" fill="#6b7480" text-anchor="middle">反传只更新学生</text>
+</svg>
+<figcaption>同一个当前场,同时喂给<b>学生(训练)</b>和<b>教师(冻结)</b>。学生的预测被两路监督:一路对教师软标签(守表达力,α),一路对 t+6h 真值(拿真本事,1−α)。两个损失相加反传,只更新学生。</figcaption>
+</figure>
+
+<div class="callout good"><div class="t">为什么掺真值能"超教师"</div>
+  <p style="margin:6px 0">纯蒸馏时学生天花板 = 教师;而 <b>(1−α)·真值</b> 这一路<em>不受教师限制</em>,它直接盯着真实答案。对某些通道(尤其温度),学生在真值这一路上可以学到教师都没学好的东西,从而在这些通道<b>反超教师</b>。α=0.5 是"守表达力"和"拿真本事"之间实测的平衡点。<em>L6 会专门展开怎么把这一路用足去攻近地面洼地。</em></p></div>
+<div class="codeblk"><span class="c"># distill_train.py:94-95 / distill_scnet.py:147-149  DTP 双损失</span>
+ld = weighted_l1(student_out, teacher_out)   <span class="c"># 蒸馏损失:对教师软标签</span>
+lg = weighted_l1(student_out, truth_t6h)     <span class="c"># 真值损失:对真实未来场</span>
+loss = args.alpha * ld + (1 - args.alpha) * lg   <span class="c"># α=0.5 加权</span></div>
+
+<!-- 4 -->
+<h2 id="s4"><span class="n">4</span>官方加权 L1:让损失对标评分口径</h2>
+<p>两路损失都不是普通的 MSE/L1,而是<b>逐通道加权的 L1</b>——权重直接取自官方 config,<em>对齐赛题 W 的评分口径</em>。</p>
+<figure>
+<svg viewBox="0 0 900 220" role="img" aria-label="官方逐通道权重">
+  <text x="24" y="26" font-size="15.5" font-weight="700" fill="#1e232a">逐通道 L1 权重(取自官方 config,重要通道权重大)</text>
+  <text x="30" y="60" font-size="13" font-weight="700" fill="#b45309">地表 4 通道(整体因子 0.25)</text>
+  <g font-size="11.5">
+    <text x="40" y="86" fill="#3b444e">mslp 气压</text><rect x="130" y="76" width="150" height="13" rx="3" fill="#60a5fa"/><text x="286" y="86" fill="#6b7480">1.50</text>
+    <text x="40" y="106" fill="#3b444e">10m u 风</text><rect x="130" y="96" width="77" height="13" rx="3" fill="#60a5fa"/><text x="213" y="106" fill="#6b7480">0.77</text>
+    <text x="40" y="126" fill="#3b444e">10m v 风</text><rect x="130" y="116" width="66" height="13" rx="3" fill="#60a5fa"/><text x="202" y="126" fill="#6b7480">0.66</text>
+    <text x="40" y="146" fill="#3b444e">2m 温度</text><rect x="130" y="136" width="300" height="13" rx="3" fill="#dc2626"/><text x="436" y="146" fill="#b91c1c" font-weight="700">3.00 ★</text>
+  </g>
+  <text x="500" y="60" font-size="13" font-weight="700" fill="#b45309">高空 5 变量 ×13 层(因子 1.0)</text>
+  <g font-size="11.5">
+    <text x="510" y="86" fill="#3b444e">z 位势</text><rect x="590" y="76" width="220" height="13" rx="3" fill="#dc2626"/><text x="816" y="86" fill="#b91c1c" font-weight="700">3.00 ★</text>
+    <text x="510" y="106" fill="#3b444e">t 温度</text><rect x="590" y="96" width="110" height="13" rx="3" fill="#f59e0b"/><text x="706" y="106" fill="#6b7480">1.50</text>
+    <text x="510" y="126" fill="#3b444e">u 风</text><rect x="590" y="116" width="57" height="13" rx="3" fill="#60a5fa"/><text x="653" y="126" fill="#6b7480">0.77</text>
+    <text x="510" y="146" fill="#3b444e">v 风</text><rect x="590" y="136" width="40" height="13" rx="3" fill="#60a5fa"/><text x="636" y="146" fill="#6b7480">0.54</text>
+    <text x="510" y="166" fill="#3b444e">q 比湿</text><rect x="590" y="156" width="44" height="13" rx="3" fill="#60a5fa"/><text x="640" y="166" fill="#6b7480">0.60</text>
+  </g>
+  <text x="24" y="205" font-size="12" fill="#6b7480">损失 = mean( |学生−目标| × 通道权重 )。权重大的通道(2m 温、位势 z)预报误差被罚得重 → 逼学生优先练好它们</text>
+</svg>
+<figcaption>各气象变量的量纲和重要性差别很大。<b>加权 L1 把"评分在乎什么"直接写进损失</b>:2m 温度、位势高度权重最高(×3.0),风/湿较低。这样优化的方向和赛题 W 的打分方向一致——不做无用功。</figcaption>
+</figure>
+<div class="codeblk"><span class="c"># distill_cache.py:20-21,267  官方逐通道权重</span>
+WEIGHTS_surface = [1.50, 0.77, 0.66, 3.00]        <span class="c"># mslp / u10 / v10 / t2m</span>
+WEIGHTS_upper   = [3.0]*13 + [0.6]*13 + [1.5]*13 + [0.77]*13 + [0.54]*13  <span class="c"># z/q/t/u/v ×13层</span>
+loss = (F.l1_loss(x, y, reduction='none') * w).mean()   <span class="c"># 地表因子0.25、高空1.0</span></div>
+
+<!-- 5 -->
+<div class="math">
+  <div class="hd">数学原理 · 为什么加真值那一路能突破天花板</div>
+  <div class="bd">
+    <p style="margin:5px 0">DTP 是一个<b>多目标加权</b>的凸组合,梯度也是两路的加权和:</p>
+    <div class="eq">L = α·L<sub>蒸馏</sub>(f, T) + (1−α)·L<sub>真值</sub>(f, y)　,　∇L = α∇L<sub>蒸馏</sub> + (1−α)∇L<sub>真值</sub></div>
+    <p style="margin:5px 0"><b>纯蒸馏(α=1)的最优解 = 完美复制教师 T</b>,所以学生误差 ≥ 教师误差,这就是天花板的数学来源。一旦 (1−α)&gt;0,损失的最小值点<em>不再是"等于教师",而是"教师与真值的加权折中"</em>——在真值比教师准的通道(如近地面温度),折中点会<b>偏离教师、更靠真值</b>,于是反超教师。α 就是控制这个折中位置的旋钮。</p>
+  </div>
+</div>
+<div class="ref">
+  <div class="rh">参考项目 · FitNets(Romero 2015)+ RKD(Park et al., 2019)</div>
+  <div class="rb">
+    <div class="row"><span class="lab">抽象问题</span>蒸馏不止能对齐"输出",还能对齐<b>中间特征</b>(FitNets 的 hint)或<b>样本间关系</b>(RKD 的距离/角度)——本质都是"让小模型继承大模型的某种结构"。</div>
+    <div class="row"><span class="lab">怎么变好</span>FitNets 用中间层监督训出更深更薄的学生;RKD 对齐 batch 内样本关系,补回流形结构、提升泛化,且几乎不加参数。</div>
+    <div class="row"><span class="lab">桥接到我们</span>我们的输出蒸馏是最基础的一种;在同一"结构对齐"框架下,<b>特征蒸馏、关系蒸馏可以叠加到气象场上补回被 patch16 丢掉的流形信息</b>(RKD 10 行代码、0 参数,直接加在加权 L1 上就能再挤一点)。理解"蒸馏=结构对齐"这个抽象,就知道还有多少可叠加的信号没用。</div>
+  </div>
+</div>
+
+<h2 id="s5"><span class="n">5</span>教师冻结与软标签</h2>
+<div class="grid2">
+  <div class="card"><h4>教师全程冻结</h4>
+    <p>教师是官方 Pangu(载 <code>model_bak.pth</code>),<b>参数完全不更新</b>,只当"老师"用——前向一次生成软标签,反传的梯度只流进学生。教师就是一把固定的尺子。</p></div>
+  <div class="card"><h4>软标签为什么值钱</h4>
+    <p>教师对每个格点输出的是<em>连续、平滑、物理自洽</em>的预测场,携带了"大气各处该怎么协同"的丰富信息。学生对着它学,比只对着真值硬标签学要好带得多。</p></div>
+</div>
+<div class="callout warn"><div class="t">副作用:教师前向很贵 → 催生了缓存</div>
+  <p style="margin:6px 0">每个训练 step 都跑一遍 1.8G 的教师前向,慢得离谱(~800-1900ms/step)。破法:<b>一次性把教师软标签全算好、缓存起来</b>(RAM 或落盘),之后训练循环不再碰教师,单 step 直接快到 ~900ms 甚至更少。<em>这套数据/缓存工程是 L 训练效率的关键,详见后续数据管线。</em></p></div>
+
+<!-- 6 -->
+<h2 id="s6"><span class="n">6</span>训练框架:一套现代配方</h2>
+<p>学生用的是一套成熟的现代训练配方(<code>distill_scnet.py</code>)。这套配方里每个部件都不是随手加的,下面逐个把<em>它解决什么问题、机制是什么、为什么这么设、代价在哪</em>讲透。</p>
+
+<div class="mx">
+  <div class="mt">① AdamW + 激进动量 β₂=0.95<span class="pin">优化器</span></div>
+  <p><b>是什么</b>:AdamW = Adam + 解耦权重衰减。Adam 给每个参数维护两个动量——一阶动量 <span class="eqi">m</span>(梯度的滑动平均)和二阶动量 <span class="eqi">v</span>(梯度平方的滑动平均),更新公式 <span class="eqi">θ ← θ − lr·m̂ / (√v̂ + ε)</span>。除以 √v̂ 相当于给每个参数一个<b>自适应学习率</b>:梯度一直很大的参数被"踩刹车",梯度小的被"给油"。</p>
+  <p><b>为什么 β₂=0.95 比默认 0.999"激进"</b>:β₂ 控制 v 的记忆长度,有效平均窗口 ≈ <span class="eqi">1/(1−β₂)</span>——0.999 是回看 <b>1000 步</b>,0.95 只回看 <b>20 步</b>。中小模型训练总步数少、梯度噪声大,0.999 太"迟钝"(要上千步才把 v 估准,前期自适应学习率是错的);0.95 让 v 紧跟当前梯度尺度、反应快,更适合小模型短训练。</p>
+  <p><b>weight_decay=0.05(AdamW 的"W")</b>:解耦的权重衰减,每步直接 <span class="eqi">θ ← θ·(1 − lr·wd)</span>,<em>不经过梯度和动量</em>(这正是 AdamW 相对 Adam 的修正)。作用是 L2 正则、压权重范数防过拟合。<b>偶尔升到 0.15–0.2</b>:更狠地压权重,连带把激活幅度也压下来 → 缓解 bf16/fp16 下"激活太大变 inf"的数值溢出。</p>
+</div>
+
+<div class="mx">
+  <div class="mt">② warmup + 余弦退火(学习率日程)<span class="pin">LR 调度</span></div>
+  <p><b>warmup(前 ~5 epoch 线性升温)</b>:lr 从 0 线性升到 base_lr。为什么:开局权重是随机的、梯度方向乱,直接上大 lr 会震荡甚至发散;更关键的是 Adam 的二阶动量 v 一开始<em>样本太少估不准</em>,此时大 lr 会被错误的自适应缩放放大。warmup 给 v 一个"预热期"先估准,再升到满 lr。</p>
+  <p><b>余弦退火(之后平滑降到近 0)</b>:<span class="eqi">lr(t) = ½·base·(1 + cos(π·(t−t_w)/(T−t_w)))</span>。为什么用余弦而不是阶梯式降:余弦在<b>末端导数趋于 0</b> → lr 变化越来越慢 → 模型平滑地落进极小点盆地;阶梯式突然降 lr 会让 loss 抖一下。后期的小 lr 负责精细收敛。</p>
+</div>
+
+<div class="mx">
+  <div class="mt">③ 梯度裁剪 1.0<span class="pin">稳定性</span></div>
+  <p><b>是什么</b>:每步反传后,若全局梯度范数 <span class="eqi">‖g‖ &gt; 1.0</span>,就整体缩放 <span class="eqi">g ← g·(1.0/‖g‖)</span>——<em>只缩模长、不改方向</em>,把这一步的"步长"封顶。</p>
+  <p><b>为什么必须有</b>:①bf16 混精偶尔冒出<b>梯度突刺</b>(某一步梯度爆大,一步就能把权重推飞、后面全崩);②气象场不同变量的梯度<b>量级差好几个数量级</b>(风 vs 温度),合起来范数很不稳。裁剪相当于训练的"保险丝",给每步步长封个上限,防一个坏 step 毁掉整轮训练。1.0 是常用且稳妥的阈值。</p>
+</div>
+
+<div class="mx">
+  <div class="mt">④ EMA 权重(衰减 0.999)<span class="pin">泛化</span></div>
+  <p><b>是什么</b>:训练时另存一份"影子权重" <span class="eqi">θ_ema</span>,每步 <span class="eqi">θ_ema ← 0.999·θ_ema + 0.001·θ</span>。它是权重的指数移动平均,近似对<b>最近 ~1000 步</b>的权重做加权平均(窗口 ≈ 1/(1−0.999))。</p>
+  <p><b>为什么更好</b>:Adam/SGD 到了极小点附近并不会停住,而是在盆地里<em>持续震荡</em>,单步权重 θ 只是"某个震荡瞬间的位置"。EMA 把这些震荡平均掉 → 落点更靠近盆地<b>中心</b>、更平坦 → 泛化更好。学生训练波动大,EMA 尤其有效:<b>eval 和保存都用 θ_ema,实测常比末步权重高 1–3%</b>,几乎是白赚的分。</p>
+</div>
+
+<div class="mx">
+  <div class="mt">⑤ bf16 自动混精<span class="pin">显存/速度</span></div>
+  <p><b>是什么</b>:autocast 让 forward 的矩阵乘/卷积走 <b>bf16</b>(16 位 = 1 符号 + 8 指数 + 7 尾数),而梯度累加、优化器状态(m/v)保 <b>fp32</b>。"自动"指框架按算子的数值安全性决定谁降精度。</p>
+  <p><b>为什么是 bf16 而不是 fp16</b>:bf16 的指数位和 fp32 一样多(8 位)→<b>动态范围一样大</b>,不易上溢/下溢,训练不用额外的 loss scaling;代价是尾数只 7 位(精度低),但<em>前向对精度不敏感,关键的梯度累加在 fp32 里做</em>,所以整体<b>无精度损失</b>。fp16 只有 5 位指数、范围小,训练易溢出、要额外 scaling 伺候。</p>
+  <p><b>收益</b>:forward 显存 ↓40–50%、更快(DCU 上 bf16 吃半精度算力约 2×),精度不掉——纯赚。</p>
+</div>
+
+<div class="mx">
+  <div class="mt">⑥ 梯度检查点(gradient checkpointing)<span class="pin">显存↔时间</span></div>
+  <p><b>是什么</b>:反传算梯度需要用到前向时的中间激活。默认会把<em>每一层</em>的激活都存下来(很占显存)。检查点只存少数"关卡"层,反传到某一段时<b>从最近的关卡重新前向算一遍激活</b>——用重算(计算)换存储(显存)。</p>
+  <p><b>权衡</b>:显存 ↓~50%(不再常驻全部中间激活),代价是多一次前向、时间 ↑~30%。所以它是个<b>可调开关</b>:数据规模大、模型深、显存吃紧时打开(比如上全量数据训);显存够用时关掉换速度。</p>
+</div>
+<figure>
+<svg viewBox="0 0 900 190" role="img" aria-label="warmup余弦学习率">
+  <text x="24" y="26" font-size="15" font-weight="700" fill="#1e232a">学习率:warmup 升温 → 余弦退火降到接近 0</text>
+  <line x1="60" y1="150" x2="860" y2="150" stroke="#cbd5e1"/><line x1="60" y1="40" x2="60" y2="150" stroke="#cbd5e1"/>
+  <text x="50" y="46" font-size="11" fill="#6b7480" text-anchor="end">lr</text>
+  <text x="460" y="176" font-size="12" fill="#6b7480" text-anchor="middle">epoch →</text>
+  <!-- warmup line then cosine -->
+  <line x1="60" y1="150" x2="160" y2="55" stroke="#7c3aed" stroke-width="3"/>
+  <path d="M160,55 C360,60 620,120 860,146" stroke="#7c3aed" stroke-width="3" fill="none"/>
+  <line x1="160" y1="55" x2="160" y2="150" stroke="#cbd5e1" stroke-dasharray="3 3"/>
+  <text x="110" y="135" font-size="11" fill="#7c3aed">warmup</text>
+  <text x="500" y="95" font-size="11" fill="#7c3aed">余弦退火</text>
+  <text x="163" y="165" font-size="10.5" fill="#6b7480">~5ep</text>
+</svg>
+<figcaption>warmup 让开局梯度稳(尤其配 EMA、LayerScale),余弦退火让后期学习率平滑降到近 0、精细收敛不来回抖。这套配方是学生稳定逼近教师的保障。</figcaption>
+</figure>
+
+<!-- 7 -->
+<h2 id="s7"><span class="n">7</span>双指标早停:判优必须看真值</h2>
+<p>训练时用<b>两个</b>验证指标盯着,分别对应"技能"和"表达力":</p>
+<div class="grid2">
+  <div class="card" style="border-color:var(--good)"><h4 style="color:var(--good)">val_gtL1(对真值,优先)</h4>
+    <p>学生预测对 <b>t+6h 真值</b>的纬度加权 L1。它衡量的是<em>真实预报技能</em>——最接近赛题 W 的口径,<b>判优主要看它</b>。</p></div>
+  <div class="card" style="border-color:var(--w)"><h4 style="color:var(--w)">val_match(对教师)</h4>
+    <p>学生预测对<b>教师输出</b>的相对逼近度。它衡量的是<em>模仿得像不像</em>——反映表达力,但<b>像教师 ≠ 预报准</b>。</p></div>
+</div>
+<div class="callout"><div class="t">一条血泪教训(记忆里反复强调)</div>
+  <p style="margin:6px 0"><b>判优必须看 val_gtL1(对真值 RMSE),不能只看 val_match(对教师)。</b>因为掺了真值后,学生在某些通道会<em>偏离教师但更接近真实</em>——这时 val_match 会"变差",但其实是好事。只盯 val_match 会把真正涨技能的模型误杀。每轮存两份:最优单存 + 断点 .ckpt(供 resume)。</p></div>
+
+<!-- 8 -->
+<h2 id="s8"><span class="n">8</span>HIP/DCU 视角 + 本课要点</h2>
+<div class="hipbox">
+  <div class="t">训练在哪跑、DCU 上要注意什么</div>
+  <p style="margin:6px 0">蒸馏训练主要在 GPU 训练机上跑(mitai 4×4090 / DeepLN V100 / abc66 / funhpc),再把最优权重拿到<b>海光 DCU</b> 上部署评测。DCU 上训练要注意:<code>bf16</code> 混精吃半精度算力、梯度检查点省显存、缓存避免重复跑教师前向(教师在 DCU 上是 <code>model_bak.pth</code> 1.8G)。判优的最终标准始终是<b>在 DCU 上对真值的 RMSE</b>,不是训练机上的 val_match。</p>
+</div>
+<div class="keypts">
+  <b class="k" style="font-size:17px">本课要点(记住这 6 条)</b>
+  <ol>
+    <li><b>蒸馏是主线</b>:让 5.19M 小学生照着 64.22M 教师(冻结)学软标签,站在教师肩膀上守住 W 大盘。</li>
+    <li><b>纯蒸馏有天花板</b>:目标是"像教师"→学生精度永远 ≤ 教师。要超教师必须引入真值。</li>
+    <li><b>DTP 双损失</b>:<span class="fx">α·L蒸馏(对教师) + (1−α)·L真值(对 t+6h 真实)</span>,α=0.5。真值这一路不受教师限制,是破天花板的起点(L6 展开)。</li>
+    <li><b>官方加权 L1</b>:逐通道权重(2m 温/位势 z ×3.0 最高)直接对标赛题 W 评分口径,不做无用功。</li>
+    <li><b>训练配方</b>:AdamW(betas 0.9/0.95)+ warmup 余弦 + 梯度裁剪 + EMA(0.999)+ bf16 + 梯度检查点。EMA 权重常更优。</li>
+    <li><b>判优看真值</b>:val_gtL1(对真值,优先)+ val_match(对教师)双指标;<em>只看 val_match 会误杀真正涨技能的模型</em>。</li>
+  </ol>
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin:44px 0 0;padding:14px 18px;background:#f6f8fa;border:1px solid #e7e9ec;border-radius:12px;font-size:14px;flex-wrap:wrap">
+  <a href="L4_学生组件升级_QKNorm_RMSNorm_SwiGLU.html" style="color:#3b444e;text-decoration:none">← L4 组件升级</a>
+  <a href="00_课程总览.html" style="color:#1d6fb8;text-decoration:none;font-weight:700">🏠 课程总览</a>
+  <a href="L6_破天花板_真值监督与近地面提分.html" style="color:#3b444e;text-decoration:none">L6 破天花板 →</a>
+</div>
+
+<div class="foot">
+  <p>先导杯 · 气象大模型轻量化 · 各模块升级优化 10 讲 —— <b>L5 蒸馏主路径:知识蒸馏 + 双损失 DTP</b></p>
+  <p><b>下一课 L6《破天花板:真值监督与近地面提分》</b>:DTP 的真值这一路怎么用足?温度掺真值让近地面真超教师、full-temp 全 13 层防高空漂移、protect/chan-reweight/region-weight 精准补洼地——这正是把 W 从 35.63 冲到 38.44 的主战场。</p>
+</div>
+
+</div>
+</body>
+</html>

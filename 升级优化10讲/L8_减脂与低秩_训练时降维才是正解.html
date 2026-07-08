@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L8 减脂与低秩:训练时降维才是正解</title>
+<style>
+  :root{
+    --ink:#1e232a; --ink2:#3b444e; --mut:#6b7480; --line:#e7e9ec;
+    --paper:#ffffff; --band:#f6f8fa; --accent:#1d6fb8; --accent2:#b45309;
+    --u:#0e7490; --v:#7c3aed; --w:#b91c1c; --good:#15803d; --warn:#a16207;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.9;font-size:16.5px;letter-spacing:.1px}
+  .wrap{max-width:940px;margin:0 auto;padding:0 24px 100px}
+  header.hero{padding:48px 24px 30px;border-bottom:3px solid var(--v);background:linear-gradient(180deg,#fbfaff,#fff)}
+  .hero-inner{max-width:940px;margin:0 auto}
+  .course{color:var(--v);font-weight:700;letter-spacing:2px;font-size:13px}
+  .lnum{display:inline-block;background:var(--v);color:#fff;font-weight:800;border-radius:8px;padding:2px 12px;font-size:14px;margin-right:8px}
+  h1{font-size:30px;line-height:1.32;margin:12px 0 8px}
+  .sub{color:var(--mut);font-size:16px;max-width:820px}
+  .pills{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap}
+  .pill{background:var(--band);border:1px solid var(--line);border-radius:999px;padding:5px 13px;font-size:13px;color:var(--ink2)}
+  .pill b{color:var(--v)}
+  h2{font-size:24px;margin:52px 0 10px;padding-top:12px;border-top:1px solid var(--line)}
+  h2 .n{display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;border-radius:9px;background:var(--v);color:#fff;font-size:17px;margin-right:12px;vertical-align:3px}
+  h3{font-size:19px;margin:28px 0 6px;color:var(--ink)}
+  h4{font-size:15.5px;margin:18px 0 4px;color:var(--accent2);letter-spacing:.3px}
+  p{margin:11px 0} .lead{font-size:17.5px;color:var(--ink2)}
+  em{font-style:normal;background:linear-gradient(transparent 60%,#e9d5ff 60%);padding:0 1px;font-weight:600}
+  b.k{color:var(--v)}
+  code{background:#f1f4f7;border:1px solid #e4e8ec;border-radius:5px;padding:1px 6px;font-family:"Cascadia Code",Consolas,monospace;font-size:13.5px;color:#0b5563}
+  ul,ol{margin:11px 0;padding-left:24px} li{margin:8px 0}
+  .band{background:var(--band);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:22px 0}
+  .callout{border-left:5px solid var(--v);background:#faf5ff;border-radius:0 12px 12px 0;padding:15px 19px;margin:20px 0}
+  .callout.good{border-color:var(--good);background:#f1fcf5}
+  .callout.warn{border-color:var(--warn);background:#fffdf3}
+  .callout.blue{border-color:var(--accent);background:#f0f7fd}
+  .callout .t{font-weight:700;margin-bottom:3px;letter-spacing:.3px}
+  figure{margin:26px 0;text-align:center}
+  figure svg{max-width:100%;height:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+  figcaption{color:var(--mut);font-size:13.5px;margin-top:10px}
+  .fx{font-family:"Cambria Math","Times New Roman",serif;font-style:italic;font-size:16.5px}
+  .card{border:1px solid var(--line);border-radius:14px;padding:16px 19px;background:#fff;margin:14px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  .bva{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:16px 0}
+  .bva>div{padding:15px 18px}
+  .bva .base{background:#fdfbff;border-right:1px solid var(--line)}
+  .bva .up{background:#f1fcf5}
+  .bva h4{margin-top:0}
+  .bva .base h4{color:var(--w)} .bva .up h4{color:var(--good)}
+  @media(max-width:720px){.bva{grid-template-columns:1fr}.bva .base{border-right:none;border-bottom:1px solid var(--line)}}
+  .hipbox{border:1px dashed #b45309;background:#fffdf6;border-radius:12px;padding:15px 19px;margin:20px 0}
+  .hipbox .t{color:var(--accent2);font-weight:700;letter-spacing:.5px}
+  .toc{columns:2;gap:20px;margin:16px 0;font-size:14.5px}
+  @media(max-width:720px){.toc{columns:1}}
+  .toc a{color:var(--v);text-decoration:none} .toc a:hover{text-decoration:underline}
+  .foot{margin-top:60px;padding-top:20px;border-top:3px solid var(--v);color:var(--mut);font-size:13.5px}
+  .keypts{background:linear-gradient(180deg,#faf5ff,#fff);border:1px solid #e3d3f3;border-radius:14px;padding:18px 22px;margin:24px 0}
+  .keypts li{margin:9px 0}
+  .codeblk{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px 16px;font-family:"Cascadia Code",Consolas,monospace;font-size:12.8px;line-height:1.75;overflow-x:auto;margin:14px 0;white-space:pre-wrap}
+  .codeblk .c{color:#7d8aa3} .codeblk .kw{color:#7dd3fc} .codeblk .s{color:#fca5a5} .codeblk .g{color:#86efac}
+  .math{border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;margin:16px 0;overflow:hidden}
+  .math .hd{background:#1e293b;color:#e2e8f0;font-size:13px;font-weight:700;letter-spacing:1px;padding:6px 15px}
+  .math .bd{padding:13px 18px;font-size:15px}
+  .math .eq{font-family:"Cambria Math","Times New Roman",serif;font-size:18px;text-align:center;margin:12px 0;color:#0f172a}
+  .ref{border:1px solid var(--line);border-left:4px solid var(--good);border-radius:10px;margin:16px 0;overflow:hidden}
+  .ref .rh{background:#f1fcf5;padding:9px 16px;font-weight:700;color:var(--good);font-size:15px;border-bottom:1px solid var(--line)}
+  .ref .rb{padding:12px 16px}
+  .ref .row{margin:7px 0;font-size:14.5px}
+  .ref .lab{display:inline-block;min-width:78px;font-weight:700;color:var(--accent2);font-size:12.5px;vertical-align:top}
+  .mx{border:1px solid var(--line);border-radius:12px;padding:15px 19px;margin:13px 0;background:#fff;border-left:4px solid var(--v)}
+  .mx .mt{font-weight:700;font-size:16.5px;color:var(--ink);margin-bottom:2px}
+  .mx .mt .pin{font-size:11.5px;color:#fff;background:var(--mut);border-radius:5px;padding:1px 8px;margin-left:8px;vertical-align:2px;font-weight:700}
+  .mx p{margin:7px 0;font-size:14.5px;line-height:1.85}
+  .mx .eqi{font-family:"Cambria Math","Times New Roman",serif;font-style:italic;background:#f1f5f9;border-radius:6px;padding:1px 7px;font-size:14.5px;color:#0f172a}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <div class="course">先导杯 · 气象大模型轻量化 · 各模块升级优化 10 讲</div>
+    <h1><span class="lnum">L8</span>减脂与低秩:训练时降维才是正解</h1>
+    <p class="sub">W 攻到位了(96.12),回头再榨 U/V。<b>低秩</b>是最经典的瘦身思路,但用错方向会白掉分。这一课讲清一个反直觉的实测结论:
+      <b class="k">对训好的权重做 SVD 事后拆分 → 否定;从一开始就把模型练在低维上(减脂)→ 才是正解。</b>关键在"权重满秩、激活低秩"这条洞察。</p>
+    <div class="pills">
+      <span class="pill"><b>SVD 事后拆分</b> 否定</span>
+      <span class="pill">权重满秩 vs <b>激活低秩</b></span>
+      <span class="pill"><b>减脂</b> 训练时降维</span>
+      <span class="pill">减脂曲线甜点</span>
+      <span class="pill">Muon 动量 0.99</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<div class="band">
+  <b class="k">本课地图</b>
+  <div class="toc">
+    <a href="#s1">① 回到攻 U/V:架构级再瘦身</a><br>
+    <a href="#s2">② 直觉做法:SVD 事后拆分权重</a><br>
+    <a href="#s3">③ 为什么 SVD 事后拆分被否定</a><br>
+    <a href="#s4">④ 关键洞察:权重满秩,激活低秩</a><br>
+    <a href="#s5">⑤ 正解:训练时降维(减脂)</a><br>
+    <a href="#s6">⑥ 减脂曲线甜点在哪</a><br>
+    <a href="#s7">⑦ Muon 优化器 + 动量 0.99</a><br>
+    <a href="#s8">⑧ HIP 视角 + 本课要点</a>
+  </div>
+</div>
+
+<!-- 1 -->
+<h2 id="s1"><span class="n">1</span>回到攻 U/V:架构级再瘦身</h2>
+<p class="lead">L5–L7 把 W 攻上去了。现在回头看 U(模型大小/显存)和 V(时长)——它们已经近满,但架构级还能不能<b>让模型更小更快、还不掉 W</b>?这就是"低秩/减脂"要回答的。</p>
+<p>神经网络里到处是大矩阵(注意力的 QKV、FFN 的 W1/W2)。<b>低秩</b>的想法很自然:如果一个大矩阵能用两个小矩阵近似(<span class="fx">W ≈ A·B</span>),参数就从 <span class="fx">d²</span> 降到 <span class="fx">2dr</span>(r 是秩)。问题是:<em>该在什么时候降秩?训完再压,还是一开始就练小?</em>——这个选择决定了成败。</p>
+
+<!-- 2 -->
+<h2 id="s2"><span class="n">2</span>直觉做法:SVD 事后拆分权重</h2>
+<p>最直觉的低秩压缩:<b>先正常训好模型,再对每个权重矩阵做 SVD 分解,砍掉小奇异值</b>,把 <span class="fx">W</span> 换成低秩近似 <span class="fx">W ≈ U<sub>r</sub>Σ<sub>r</sub>V<sub>r</sub>ᵀ</span>。秩 r 留得越少,参数越省。</p>
+<div class="codeblk"><span class="c"># 事后 SVD 低秩压缩(直觉做法)</span>
+U, S, V = torch.svd(W)                    <span class="c"># 对训好的权重分解</span>
+W_lowrank = U[:, :r] @ diag(S[:r]) @ V[:, :r].T   <span class="c"># 只留前 r 个奇异值</span>
+<span class="c"># 尝试了 r=0.7 / 0.5 / 0.35 三档(留 70%/50%/35% 的秩)</span></div>
+<p>三档 SVD 压缩权重(<code>student_svd_r0.7/0.5/0.35</code>)都做了。结果——<b>掉点</b>。留得越狠掉得越多。这条路被否定了。为什么这么"合理"的做法会失败?</p>
+
+<!-- 3 -->
+<h2 id="s3"><span class="n">3</span>为什么 SVD 事后拆分被否定</h2>
+<p class="lead">因为一个反直觉的事实:<b>训好的权重矩阵几乎是满秩的</b>——它的奇异值不怎么衰减,信息<em>铺满了所有维度</em>,没有"小奇异值"可砍。</p>
+<figure>
+<svg viewBox="0 0 900 230" role="img" aria-label="权重满秩谱">
+  <text x="24" y="28" font-size="15.5" font-weight="700" fill="#1e232a">训好的权重:奇异值谱平缓不衰减(有效秩 ≈ 0.97,几乎满秩)</text>
+  <line x1="70" y1="185" x2="850" y2="185" stroke="#cbd5e1"/><line x1="70" y1="55" x2="70" y2="185" stroke="#cbd5e1"/>
+  <text x="60" y="61" font-size="11" fill="#6b7480" text-anchor="end">奇异值</text>
+  <text x="460" y="212" font-size="12" fill="#6b7480" text-anchor="middle">奇异值序号(从大到小)→</text>
+  <!-- flat-ish curve = full rank -->
+  <path d="M70,70 C300,88 560,105 850,140" stroke="#b91c1c" stroke-width="3" fill="none"/>
+  <text x="560" y="95" font-size="12.5" fill="#b91c1c" font-weight="700">权重谱:缓慢下降,尾巴不小 → 砍哪个都在删真信息</text>
+  <!-- cut line -->
+  <line x1="600" y1="55" x2="600" y2="185" stroke="#7c3aed" stroke-dasharray="5 4"/>
+  <text x="606" y="70" font-size="11" fill="#7c3aed">r=0.7 从这砍</text>
+  <text x="640" y="130" font-size="11.5" fill="#7c3aed">砍掉的这些奇异值还很大 → 掉点</text>
+</svg>
+<figcaption>SVD 能省参的前提是"有一堆接近 0 的小奇异值可以扔"。但<b>训好的权重谱几乎是平的(有效秩 ≈ 0.97)</b>——每个奇异值都携带真实信息,砍任何一个都是硬删。所以事后 SVD 必然掉点,这是<em>结构性</em>的,不是调参能救的。</figcaption>
+</figure>
+<div class="callout"><div class="t">类比:一张写满字的纸,没法"压缩空白"</div>
+  <p style="margin:6px 0">SVD 压缩就像"删掉纸上的空白区域"。可训好的权重是<b>一张写满字的纸</b>——没有空白可删,你删的都是字。低秩压缩要有效,必须让权重<em>本来就存在冗余</em>。而这个冗余,得靠"从头就练小"来创造,不是事后去找。</p></div>
+
+<!-- 4 -->
+<h2 id="s4"><span class="n">4</span>关键洞察:权重满秩,但激活低秩</h2>
+<p class="lead">这里有个决定方向的关键测量:<b>权重满秩(有效秩 ≈ 0.97),但激活是低秩的(有效秩 只有 0.07–0.17)</b>。这一高一低,指出了低秩该用在哪。</p>
+<figure>
+<svg viewBox="0 0 900 220" role="img" aria-label="权重谱vs激活谱">
+  <text x="24" y="26" font-size="15.5" font-weight="700" fill="#1e232a">同一层:权重谱平(满秩)vs 激活谱陡降(低秩)</text>
+  <!-- weight -->
+  <text x="200" y="55" font-size="13" fill="#b91c1c" font-weight="700" text-anchor="middle">权重(满秩 0.97)</text>
+  <line x1="70" y1="180" x2="380" y2="180" stroke="#cbd5e1"/><line x1="70" y1="70" x2="70" y2="180" stroke="#cbd5e1"/>
+  <path d="M70,82 C180,95 290,108 380,130" stroke="#b91c1c" stroke-width="3" fill="none"/>
+  <text x="225" y="160" font-size="11" fill="#6b7480" text-anchor="middle">砍不动</text>
+  <!-- activation -->
+  <text x="680" y="55" font-size="13" fill="#15803d" font-weight="700" text-anchor="middle">激活(低秩 0.07–0.17)</text>
+  <line x1="520" y1="180" x2="830" y2="180" stroke="#cbd5e1"/><line x1="520" y1="70" x2="520" y2="180" stroke="#cbd5e1"/>
+  <path d="M520,74 C545,150 580,172 830,178" stroke="#15803d" stroke-width="3" fill="none"/>
+  <text x="700" y="120" font-size="11.5" fill="#15803d">前几个维度就占了绝大部分能量</text>
+  <text x="675" y="165" font-size="11" fill="#6b7480" text-anchor="middle">真实数据只用了一小块子空间</text>
+</svg>
+<figcaption>权重谱平(每维都有信息,砍不动);但<b>激活谱陡降</b>——数据流过网络时,真实的表示<em>只占据了一个很小的低维子空间</em>。含义:模型的"容量"没被数据用满,<b>可以更窄</b>。但正确的做法不是砍权重的秩,而是<b>让模型在更低的维度上从头学</b>。</figcaption>
+</figure>
+<div class="callout blue"><div class="t">为什么这个区别是全课的分水岭</div>
+  <p style="margin:6px 0"><b>激活低秩 ≠ 权重低秩。</b>激活低秩说明"数据只需要一个小空间",这是<em>可以更窄</em>的信号;但权重是满秩的,说明"模型已经把这个小空间的信息塞满了每一维",<em>事后没法再拆</em>。所以低秩的红利要在<b>训练时</b>兑现(限制维度从头学),不能在<b>训练后</b>硬取(SVD 砍秩)。</p></div>
+
+<!-- 5 -->
+<div class="math">
+  <div class="hd">数学原理 · SVD 截断误差、有效秩、为什么低秩要加在训练时</div>
+  <div class="bd">
+    <p style="margin:5px 0"><b>SVD 截断</b>:<span class="fx">W = UΣVᵀ</span>,只留前 r 个奇异值的近似误差 = 被砍掉的奇异值的平方和:</p>
+    <div class="eq">‖W − W<sub>r</sub>‖² = Σ<sub>i&gt;r</sub> σ<sub>i</sub>²　→　σ 衰减快才能小误差压缩</div>
+    <p style="margin:5px 0"><b>有效秩</b>(把归一化奇异值当概率算熵):<span class="fx">erank = exp(H(σ̃))</span>。实测<b>权重 erank ≈ 0.97·n(近满,σ 几乎不衰减,砍就掉点);激活 erank ≈ 0.1·n(低秩,能量集中在前几维)</b>。</p>
+    <p style="margin:5px 0">激活低秩说明"数据只用了小子空间",但权重满秩说明"信息已塞满每一维"→ <b>低秩红利只能在训练时兑现</b>(限制维度从头学),事后 SVD 砍不动。</p>
+  </div>
+</div>
+<div class="ref">
+  <div class="rh">参考项目 · LoRA(Hu et al., 2021)+ Muon(Jordan et al., 2024)</div>
+  <div class="rb">
+    <div class="row"><span class="lab">抽象问题</span>LoRA 假设"权重<b>更新</b>是低秩的",用 <span class="fx">ΔW = BA</span>(r≪d)训练、冻结原 W——把低秩约束加在<b>训练过程(优化路径)</b>而非事后权重。Muon 对 2D 权重的动量做 Newton-Schulz 正交化,让更新在各奇异方向<b>均衡下降</b>。</div>
+    <div class="row"><span class="lab">怎么变好</span>LoRA 让大模型微调只训 ~0.1% 参数、显存暴降,成为 LLM 微调标配;Muon 在小模型/预训练上比 AdamW 收敛更快。</div>
+    <div class="row"><span class="lab">桥接到我们</span>LoRA 的核心洞察"<b>更新低秩、约束加在训练时</b>"和我们"激活低秩→训练时降维(减脂)"是<em>同一族思想</em>:低秩要加在优化路径上,不是事后砍权重。减脂是"从头把维度限低",LoRA 是"把更新限低",都是训练时低秩。而 Muon 正好专治减脂后的窄 2D 权重——所以它俩是我们这条线最直接的理论/工具支撑。</div>
+  </div>
+</div>
+
+<h2 id="s5"><span class="n">5</span>正解:训练时降维(减脂)</h2>
+<div class="bva">
+  <div class="base"><h4>SVD 事后拆分(否定)</h4>
+    <p style="margin:6px 0">先训满,再砍秩。权重满秩→砍的都是真信息→<b>掉点</b>。相当于"练成了再抽掉一半肌肉"。</p></div>
+  <div class="up"><h4>减脂:训练时降维(正解)</h4>
+    <p style="margin:6px 0"><b>从一开始就用更窄的层训</b>(减小 mlp_ratio / embed)。模型在低维约束下<em>从头学</em>,会自动把信息<b>压进保留的维度</b>——练成的是"精瘦"的模型,不是被抽过的。</p></div>
+</div>
+<p>具体到学生:<b>减脂主要是调 FFN 的膨胀率 mlp_ratio</b>(FFN 是参数大头)。从标准的 mlp_ratio=4 往下减到 3、2,配合窄 embed,直接把参数练下来,而不是训完再压。对应权重 <code>student_ratio2 / ratio3</code>。</p>
+<div class="callout good"><div class="t">为什么"练小"比"压小"好</div>
+  <p style="margin:6px 0">同样是低秩,<b>约束加在训练前 vs 训练后,结果天差地别</b>:训练前限制维度,优化器会在这个约束下找最优解、把信息<em>主动</em>组织进有限维度;训练后砍秩,是<em>被动</em>破坏已经组织好的信息。前者是"戴着镣铐把舞跳好",后者是"跳完再砍掉一条腿"。</p></div>
+
+<!-- 6 -->
+<h2 id="s6"><span class="n">6</span>减脂曲线甜点在哪</h2>
+<p>减脂不是越狠越好:减太少不省 U/V,减太多掉 W。要找<b>边际拐点</b>——再减下去 W 掉得比省的多的那个点。系统扫描 mlp_ratio 的 4/3/2 三档:</p>
+<figure>
+<svg viewBox="0 0 900 250" role="img" aria-label="减脂曲线甜点">
+  <text x="24" y="28" font-size="15.5" font-weight="700" fill="#1e232a">减脂曲线:参数一路降,精度在 ratio3 附近出现边际拐点(甜点)</text>
+  <line x1="80" y1="200" x2="820" y2="200" stroke="#cbd5e1"/><line x1="80" y1="55" x2="80" y2="200" stroke="#cbd5e1"/>
+  <text x="70" y="61" font-size="11" fill="#6b7480" text-anchor="end">精度</text>
+  <text x="450" y="228" font-size="12" fill="#6b7480" text-anchor="middle">← 减脂越狠(mlp_ratio 4 → 3 → 2)· 参数越少</text>
+  <!-- points: ratio4 (right, big param, high acc), ratio3 (mid, knee), ratio2 (left, small, drop) -->
+  <circle cx="720" cy="80" r="7" fill="#7c3aed"/><text x="720" y="68" font-size="11.5" fill="#7c3aed" text-anchor="middle">ratio4(标准·参数大)</text>
+  <circle cx="450" cy="95" r="8" fill="#15803d"/><text x="450" y="80" font-size="12" fill="#15803d" text-anchor="middle" font-weight="700">ratio3 甜点 ≈5.09M/1.06×</text>
+  <circle cx="180" cy="150" r="7" fill="#b91c1c"/><text x="180" y="138" font-size="11.5" fill="#b91c1c" text-anchor="middle">ratio2(更省但精度开始掉)</text>
+  <path d="M720,80 C600,84 520,90 450,95 C360,102 250,120 180,150" stroke="#94a3b8" stroke-width="2.5" fill="none"/>
+  <!-- knee marker -->
+  <line x1="450" y1="95" x2="450" y2="200" stroke="#15803d" stroke-dasharray="4 4" opacity="0.6"/>
+  <text x="455" y="195" font-size="10.5" fill="#15803d">拐点:再减 W 掉得快</text>
+</svg>
+<figcaption>从 ratio4 减到 ratio3,参数掉一截而精度几乎不动(<b>甜点 ≈ 5.09M / 1.06×</b>);再往 ratio2 减,精度开始明显下滑。<em>拐点就是性价比最高的减脂点</em>。(最终提交在 ratio3 甜点基础上,配合 DTP 等 W 招式做了取舍。)</figcaption>
+</figure>
+<div class="callout blue"><div class="t">怎么判断到了甜点:用效率评估工具</div>
+  <p style="margin:6px 0">不靠拍脑袋,靠一套<b>诊断工具</b>系统判断:<b>有效秩(effective rank)</b>看信息是否还铺得开、<b>激活低秩度</b>看容量是否还有冗余、<b>CKA 表征相似度</b>看减脂前后表征是否互补/塌缩、<b>成本-收益</b>算每减 1M 参数掉多少 W。多个信号一致指向"再减就亏"时,就是甜点。</p></div>
+
+<!-- 7 -->
+<h2 id="s7"><span class="n">7</span>Muon 优化器 + 动量 0.99</h2>
+<p>减脂后的窄模型,换个优化器能训得更快更好。<b>Muon</b> 是 2024 年出现、在小模型/预训练上很亮眼的优化器,专门管 2D 权重矩阵。下面把它的机制、为什么有效、以及动量取值逐条讲透。</p>
+
+<div class="mx">
+  <div class="mt">① Muon 的机制:动量 + Newton-Schulz 正交化<span class="pin">优化器</span></div>
+  <p><b>是什么</b>:Muon 只负责<b>2D 权重矩阵</b>(注意力的 QKV/输出投影、FFN 的 W₁/W₂ 这些矩阵),归一化 γ、bias、embedding 这些非 2D 参数仍交给 AdamW。它先像 SGD-momentum 一样累积动量 <span class="eqi">M</span>(梯度的滑动平均),但更新前多做一步——把 M 做<b>正交化</b>再拿去更新权重:</p>
+  <p><span class="eqi">θ ← θ − lr · Orthogonalize(M)</span>,其中正交化用 <b>Newton-Schulz 迭代</b>反复几次:<span class="eqi">X ← 1.5·X − 0.5·X·XᵀX</span></p>
+  <p>这个迭代把矩阵的<b>所有奇异值推向 1</b>,得到一个近似正交的矩阵(方向不变、把各方向"拉平")。</p>
+</div>
+
+<div class="mx">
+  <div class="mt">② 为什么正交化有效:各奇异方向步长均衡<span class="pin">机制</span></div>
+  <p><b>问题</b>:普通动量更新 M 的奇异值分布很不均——大奇异值方向"走得飞快"、小奇异值方向"几乎不动",相当于不同方向用了差别巨大的有效学习率,收敛慢且不稳。</p>
+  <p><b>正交化的作用</b>:把 M 的奇异值全<b>拉平到 ≈1</b>,等于给每个方向都配了合适、均衡的步长 → 更新在所有方向<em>同步、均匀地下降</em>。直觉上,它让优化器"每个方向都照顾到",不会被少数大方向主导。这对<b>窄模型</b>(参数少、奇异方向少)收益尤其明显——每个方向都金贵,均衡下降不浪费。</p>
+  <p><b>实测</b>:小模型下 Muon 比 AdamW <b>省 30–40% 训练时间</b>,同 epoch 下 train_loss 更低(abc66 冒烟:Muon 0.232 &lt; AdamW 0.255)。</p>
+</div>
+
+<div class="mx">
+  <div class="mt">③ 动量 0.99 是实测甜点<span class="pin">超参</span></div>
+  <p><b>是什么</b>:Muon 的动量系数 μ 控制 M 对历史梯度的记忆长度。把 μ 扫一遍,<b>0.99 最优</b>。</p>
+  <p><b>为什么高动量配窄模型</b>:μ 越高,M 平均掉的历史越长、方向越稳(把单步梯度噪声抹平)。窄模型每步的梯度<em>相对噪声更大</em>(参数少、批内统计更抖),高动量正好帮它稳住更新方向、不被噪声带偏。<code>student_mom99</code>(embed96 / depths(2,4,2) / grid + Muon 动量 0.99,约 5.83M / 1.05×)就是这条线上很强的一个配置。</p>
+</div>
+<div class="codeblk"><span class="c"># 分组:2D 大权重用 Muon,其余用 AdamW</span>
+muon_params  = [attn/mlp 的 QKV·W_out 等 2D 矩阵]   <span class="c"># Muon,lr~0.02,动量 0.99</span>
+adamw_params = [embed·norm·conv·bias 等]            <span class="c"># AdamW,lr~6e-4</span></div>
+
+<!-- 8 -->
+<h2 id="s8"><span class="n">8</span>HIP/DCU 视角 + 本课要点</h2>
+<div class="hipbox">
+  <div class="t">减脂 vs 事后压缩,在 DCU 上的差别</div>
+  <p style="margin:6px 0">减脂练出的是<b>规整的窄稠密矩阵</b>——在海光 DCU 上就是更小的规整 <code>GEMM</code>,直接吃满 <code>Matrix Core</code>、访存也少,U/V 双赢。而 SVD 事后拆分会把一个 GEMM 拆成两个小 GEMM(<span class="fx">W→A·B</span>),<em>算子变多、可能更碎、还掉精度</em>,在国产卡上不划算。<b>结论一致:训练时把模型练小(规整窄稠密)最适配 DCU</b>,别在推理期玩权重分解。张量分解(Tucker/TT)、剪枝同理——能训小就别事后拆。</p>
+</div>
+<div class="keypts">
+  <b class="k" style="font-size:17px">本课要点(记住这 6 条)</b>
+  <ol>
+    <li><b>低秩要用对时机</b>:训完再压 vs 一开始练小,结果天差地别。这一课的分水岭。</li>
+    <li><b>SVD 事后拆分被否定</b>:训好的权重<em>几乎满秩</em>(有效秩 0.97),奇异值不衰减,砍秩=硬删真信息,必然掉点。</li>
+    <li><b>关键洞察</b>:<b>权重满秩(砍不动)但激活低秩(0.07–0.17)</b>。激活低秩说明"可以更窄",但红利要在训练时兑现,不是事后砍权重。</li>
+    <li><b>减脂 = 训练时降维</b>:从头用更窄的层训(主要减 mlp_ratio),模型主动把信息压进保留维度,练出"精瘦"而非"被抽"的模型。</li>
+    <li><b>找甜点</b>:扫 ratio4/3/2,边际拐点≈ratio3(5.09M/1.06×)是性价比最高点;用有效秩/激活低秩/CKA/成本收益判断"再减就亏"。</li>
+    <li><b>Muon + 动量 0.99</b>:2D 权重正交化动量,窄模型省 30–40% 训练时间、收敛更好(mom99 约 5.83M/1.05×)。DCU 上"练小的规整窄稠密"最适配。</li>
+  </ol>
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin:44px 0 0;padding:14px 18px;background:#f6f8fa;border:1px solid #e7e9ec;border-radius:12px;font-size:14px;flex-wrap:wrap">
+  <a href="L7_物理先验_从软约束到架构硬约束.html" style="color:#3b444e;text-decoration:none">← L7 物理先验</a>
+  <a href="00_课程总览.html" style="color:#1d6fb8;text-decoration:none;font-weight:700">🏠 课程总览</a>
+  <a href="L9_量化与显存_fp16_INT8与空间分块.html" style="color:#3b444e;text-decoration:none">L9 量化显存 →</a>
+</div>
+
+<div class="foot">
+  <p>先导杯 · 气象大模型轻量化 · 各模块升级优化 10 讲 —— <b>L8 减脂与低秩:训练时降维才是正解</b></p>
+  <p><b>下一课 L9《量化与显存:fp16/INT8 + 空间分块》</b>:继续榨 U——权重存储 fp16/INT8 怎么选、为什么这个任务显存靠"空间分块 tiling"而不是权重量化(激活占显存 99%)、以及推理显存 923→548 的三招怎么做到 bit-exact 不掉分。</p>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>气象大模型轻量化 · 全项目优化点总账</title>
+<style>
+  :root{
+    --ink:#1e232a; --ink2:#3b444e; --mut:#6b7480; --line:#e7e9ec;
+    --paper:#ffffff; --band:#f6f8fa; --accent:#1d6fb8; --accent2:#b45309;
+    --u:#0e7490; --v:#7c3aed; --w:#b91c1c; --good:#15803d; --warn:#a16207;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.85;font-size:16px;letter-spacing:.1px}
+  .wrap{max-width:980px;margin:0 auto;padding:0 24px 100px}
+  header.hero{padding:44px 24px 26px;border-bottom:3px solid var(--accent);background:linear-gradient(180deg,#fafcff,#fff)}
+  .hero-inner{max-width:980px;margin:0 auto}
+  .course{color:var(--accent);font-weight:700;letter-spacing:2px;font-size:13px}
+  h1{font-size:29px;line-height:1.3;margin:10px 0 8px}
+  h1 .b{color:var(--good)}
+  .sub{color:var(--mut);font-size:15.5px;max-width:860px}
+  .pills{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+  .pill{background:var(--band);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12.5px;color:var(--ink2)}
+  .pill b{color:var(--accent)}
+  h2{font-size:23px;margin:48px 0 8px;padding:14px 0 0;border-top:2px solid var(--accent)}
+  h2 .n{display:inline-block;min-width:34px;height:34px;line-height:34px;text-align:center;border-radius:9px;background:var(--accent);color:#fff;font-size:16px;margin-right:10px;padding:0 6px;vertical-align:3px}
+  h3{font-size:18.5px;margin:26px 0 4px;color:var(--ink);border-left:4px solid var(--accent);padding-left:10px}
+  h4{font-size:15.5px;margin:16px 0 2px;color:var(--accent2)}
+  p{margin:9px 0}
+  em{font-style:normal;background:linear-gradient(transparent 60%,#fde68a 60%);padding:0 1px;font-weight:600}
+  b.k{color:var(--accent)}
+  code{background:#f1f4f7;border:1px solid #e4e8ec;border-radius:5px;padding:0 5px;font-family:"Cascadia Code",Consolas,monospace;font-size:13px;color:#0b5563}
+  ul,ol{margin:8px 0;padding-left:22px} li{margin:5px 0}
+  .band{background:var(--band);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:18px 0}
+  .callout{border-left:5px solid var(--accent);background:#f0f7fd;border-radius:0 12px 12px 0;padding:13px 17px;margin:16px 0}
+  .callout.good{border-color:var(--good);background:#f1fcf5}
+  .callout.warn{border-color:var(--warn);background:#fffdf3}
+  .callout .t{font-weight:700;margin-bottom:2px}
+  figure{margin:22px 0;text-align:center}
+  figure svg{max-width:100%;height:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+  figcaption{color:var(--mut);font-size:13px;margin-top:8px}
+  .fx{font-family:"Cambria Math","Times New Roman",serif;font-style:italic;font-size:16px}
+  /* 优化点条目 */
+  .opt{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:11px 15px;margin:9px 0;background:#fff}
+  .opt .h{font-weight:700;font-size:15.5px;color:var(--ink)}
+  .opt .h .tag{font-size:11px;font-weight:700;color:#fff;background:var(--accent);border-radius:5px;padding:1px 7px;margin-left:8px;vertical-align:1px}
+  .opt .m{color:var(--ink2);font-size:14.5px;margin-top:3px}
+  .opt .e{color:var(--mut);font-size:12.5px;margin-top:4px;font-family:"Cascadia Code",Consolas,monospace}
+  .opt .gain{color:var(--good);font-weight:700}
+  .opt.w{border-left-color:var(--w)} .opt.u{border-left-color:var(--u)} .opt.v{border-left-color:var(--v)}
+  .opt.w .h .tag{background:var(--w)} .opt.u .h .tag{background:var(--u)} .opt.v .h .tag{background:var(--v)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .hipbox{border:1px dashed #b45309;background:#fffdf6;border-radius:12px;padding:13px 17px;margin:16px 0}
+  .hipbox .t{color:var(--accent2);font-weight:700}
+  .num{font-variant-numeric:tabular-nums}
+  .toc{columns:2;gap:24px;margin:14px 0;font-size:14px}
+  @media(max-width:760px){.toc{columns:1}}
+  .toc a{color:var(--accent);text-decoration:none} .toc a:hover{text-decoration:underline}
+  .foot{margin-top:56px;padding-top:18px;border-top:3px solid var(--accent);color:var(--mut);font-size:13px}
+  .scorebar{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+  .sc{flex:1;min-width:150px;border-radius:12px;padding:12px 15px;color:#fff}
+  .sc.u{background:linear-gradient(135deg,#0e7490,#0891b2)} .sc.v{background:linear-gradient(135deg,#7c3aed,#9333ea)} .sc.w{background:linear-gradient(135deg,#b91c1c,#dc2626)} .sc.t{background:linear-gradient(135deg,#15803d,#16a34a)}
+  .sc .big{font-size:25px;font-weight:800} .sc .lab{font-size:12px;opacity:.92}
+  .chain{border:1px solid var(--line);border-radius:12px;padding:8px 14px;margin:6px 0;background:#fff;font-size:14px}
+  .chain .d{color:var(--accent);font-weight:700;font-family:"Cascadia Code",monospace;font-size:12.5px}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <div class="course">先导杯 · 气象大模型轻量化(赛题二 · 海光 DCU)· 全项目优化点总账</div>
+    <h1>60+ 优化点成体系拆解:从教师 979.9ms 到 <span class="b">96.1213 分</span></h1>
+    <p class="sub">这是整个盘古 Pangu-Weather 轻量化项目的<b>完整优化点总账</b>——把学生模型 5.19M 如何用蒸馏逼近 64.22M 教师、
+      如何在国产 DCU 上又快又省又准的<em>所有</em>优化,按"架构 / 蒸馏训练 / 推理部署"三大子系统成体系地列全,每个都带证据和效果。基于对全项目代码逐文件核查。</p>
+    <div class="pills">
+      <span class="pill">教师 <b>64.22M</b> → 学生 <b>5.19M</b></span>
+      <span class="pill">1868MB → <b>10.46MB</b></span>
+      <span class="pill">12.5GB → <b>548/566MB</b></span>
+      <span class="pill">979.9ms → <b>65.7ms</b>(14.9×)</span>
+      <span class="pill">判卷 <b>96.1213</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ===== 真实成绩 ===== -->
+<div class="band">
+  <b class="k" style="font-size:16px">真实判卷最终成绩(2026-06-27 提交)</b>
+  <div class="scorebar">
+    <div class="sc u"><div class="big num">38.7447</div><div class="lab">U 轻量化 / 40(模型大小+推理显存)</div></div>
+    <div class="sc v"><div class="big num">18.9379</div><div class="lab">V 推理时长 / 20</div></div>
+    <div class="sc w"><div class="big num">38.4387</div><div class="lab">W 预测性能 / 40</div></div>
+    <div class="sc t"><div class="big num">96.1213</div><div class="lab">总分 / 100</div></div>
+  </div>
+  <p style="margin:6px 0;font-size:14px;color:var(--mut)">注:提交包技术文档里写的是一个<em>更早的中间自评版</em>(U39.01/V19.40/W35.63=94.04,15 指标口径)。真实判卷最终版 W 冲到 38.44(见第 ⑤ 节"96.1213 真相"),U/V 微降换来 W 大涨。</p>
+</div>
+
+<div class="band">
+  <b class="k">全景导航</b>
+  <div class="toc">
+    <a href="#s1">① 学生架构优化(骨架/注意力/归一化/全局三支路/物理层/低秩)</a><br>
+    <a href="#s2">② 蒸馏与训练优化(双损失/真值监督/物理损失/优化器/数据/高级)</a><br>
+    <a href="#s3">③ 推理·显存·量化·DCU 手写核</a><br>
+    <a href="#s4">④ 实验演进链(41 份权重的时间线)</a><br>
+    <a href="#s5">⑤ 96.1213 最终版真相(bo1/ENC_FP32/口径)</a><br>
+    <a href="#s6">⑥ 评测口径与 U/V/W 公式</a>
+  </div>
+  <p style="margin:8px 0 0;font-size:13.5px;color:var(--mut)">标签:<span style="color:var(--u);font-weight:700">U</span>=攻模型大小/显存 · <span style="color:var(--v);font-weight:700">V</span>=攻时长 · <span style="color:var(--w);font-weight:700">W</span>=攻精度 · 蓝=通用/结构</p>
+</div>
+
+<!-- ==================== 1 架构 ==================== -->
+<h2 id="s1"><span class="n">①</span>学生架构优化</h2>
+<p>主线:<b>接口对齐教师 + 更小更快的骨干 + 便宜的全局注意力</b>。学生 stem/head 复用官方 Pangu 模块(保证可蒸馏、可官方评测),只改中间骨干。</p>
+
+<h3>1.1 骨架与多尺度</h3>
+<div class="opt"><div class="h">U 形多尺度(enc→down→mid→up→dec + skip)<span class="tag">核心</span></div>
+  <div class="m">主干最深的计算全放在下采样后的 <b>~1/4 token</b> 上,两端浅层在全分辨率抓细节,skip 跳连补回。下采样同时通道翻倍(96→192)。</div>
+  <div class="e">maxvit3d_student.py:335-440 · 直接省 V(延迟)+ U(显存)</div></div>
+<div class="opt u"><div class="h">大 patch(2,16,16)<span class="tag">U/V</span></div>
+  <div class="m">教师 patch(2,4,4)→学生 (2,16,16),token 数 <b>521280 → 33120(≈1/16)</b>。省 token 最粗的一刀,细节靠 stem/block/skip 补。</div>
+  <div class="e">patch 越大越省但掉 W;patch16 是实测甜点</div></div>
+<div class="opt u"><div class="h">embed 缩窄 + depths 配比<span class="tag">U</span></div>
+  <div class="m">embed_dim 192→<b>96</b>(教师一半),depths (enc2,mid4,dec2),mlp_ratio 4.0→<b>2.0</b>。用更窄更浅换参数量,配 grid/蒸馏守住 W。→ 5.19M。</div>
+  <div class="e">maxvit3d_student.py:339-342</div></div>
+<div class="opt"><div class="h">stem/head 复用官方 PanguEmbedding/Recovery<span class="tag">约束</span></div>
+  <div class="m">入 [B,72,721,1440]、出 surface[B,4]+upper[B,5,13] 逐通道对齐教师,才能蒸馏、才能官方 result.py 评测。两套 onescience API 自适配(SCNet 统一版/abc66 分版)。</div>
+  <div class="e">maxvit3d_student.py:349-372</div></div>
+<div class="opt w"><div class="h">残差预测(out = x_in + NN 增量)<span class="tag">W</span></div>
+  <div class="m">网络只学 t→t+6h 的<em>小增量</em>(数据残差比仅 0.07-0.12),等于给网络极好初值,大幅减负、早期收敛快 10-20%、整体提精度。</div>
+  <div class="e">maxvit3d_student.py:345,415-440 · --residual 开关</div></div>
+
+<h3>1.2 注意力机制(MaxViT block + grid)</h3>
+<div class="opt"><div class="h">block 局部窗口注意力<span class="tag">细节</span></div>
+  <div class="m">连续窗口 (2,6,12)=144 token 组内做全注意力,抓局地锋面/环流细节。</div>
+  <div class="e">maxvit3d_student.py:93-106 block_partition</div></div>
+<div class="opt v"><div class="h">grid 等距稀疏全局注意力<span class="tag">灵魂</span></div>
+  <div class="m">跨步等距抽样,把散布全域的 token 凑一组做注意力,<b>一跳看全球</b>。O(N·M) 而非 O(N²),分组规整→标准稠密 GEMM,吃满 DCU Matrix Core(不像教师移位窗口的不规则 gather)。</div>
+  <div class="e">maxvit3d_student.py:109-123 grid_partition · 基线达 1.05-1.14×</div></div>
+<div class="opt w"><div class="h">QK-Norm 余弦注意力 + 每头可学习温度<span class="tag">W</span></div>
+  <div class="m">q,k 先 L2 归一化(余弦相似)+ 每头 logit_scale(初始 log10,上限 clamp log100,SwinV2 风格)。对初始化不敏感、训练更稳、可更深更窄。</div>
+  <div class="e">maxvit3d_student.py:162-194 Attention3D</div></div>
+<div class="opt"><div class="h">RelPosBias3D 3D 相对位置偏置</div>
+  <div class="m">Swin 风格,3D 网格坐标差映射到偏置表,给注意力空间位置归纳偏置。</div>
+  <div class="e">maxvit3d_student.py:126-152</div></div>
+
+<h3>1.3 三种全局支路(grid / spectral / fpa,可切换)</h3>
+<div class="grid2">
+  <div class="opt"><div class="h">spectral:AFNO 频域全局</div>
+    <div class="m">低模逐通道复滤波(depthwise FFT)+ 通道混合,卷积定理 O(N log N) 拿全局。参数远小于 FNO;近恒等初始化(fr~1,fi=0)稳。</div>
+    <div class="e">maxvit3d_student.py:197-217 SpectralMix2D · modes(12,12)</div></div>
+  <div class="opt"><div class="h">fpa:原型自适应全局(特色创新)</div>
+    <div class="m">M=128 原型经 T 次竞争式吸收真实 token 分布(slot-attention 可微聚类)→自动迁移到急流/气旋活跃区;token 再对原型交叉注意 O(N·M)。<b>等价 Transolver 物理 slice / Agent 线性注意力</b>,全程稠密 GEMM+softmax,rocBLAS 友好。</div>
+    <div class="e">maxvit3d_student.py:220-283 PrototypeAdaptiveMix</div></div>
+</div>
+<div class="callout"><div class="t">为什么三选一、默认 grid</div>
+  <p style="margin:5px 0">grid 最稳最快(基线 1.14×),是提交默认;spectral/fpa 是更强表达力的进阶路线(fpa 内容自适应更贴动力学),留作融合升级。三者共享 QK-Norm、都为 DCU 稠密计算而设计。</p></div>
+
+<h3>1.4 归一化与 FFN</h3>
+<div class="opt u"><div class="h">RMSNorm 替 LayerNorm<span class="tag">U/V</span></div>
+  <div class="m">省去中心化和方差项,只 <code>x·rsqrt(mean(x²))·w</code>,计算轻、显存省、精度等价(尤其 DCU 上)。</div>
+  <div class="e">maxvit3d_student.py:54-62</div></div>
+<div class="opt"><div class="h">SwiGLU 门控 FFN</div>
+  <div class="m"><code>(SiLU(xW1)⊗xW3)W2</code>,隐藏维取 8/3·d 使参数与标准 4×GELU 相当。门控提表达力、参数不增。</div>
+  <div class="e">maxvit3d_student.py:65-77</div></div>
+<div class="opt"><div class="h">LayerScale + DropPath</div>
+  <div class="m">每残差分支乘可学习 λ(初始 1e-5,深层稳梯度、缓慢学);DropPath 随机丢分支做正则。</div>
+  <div class="e">maxvit3d_student.py:38-51,286-331</div></div>
+
+<h3>1.5 物理先验搬到架构层(不是损失)</h3>
+<div class="opt w"><div class="h">守恒校正层(硬约束,P0 已验证)<span class="tag">W</span></div>
+  <div class="m">输出头后对每通道做<b>纬度加权全球均值校正</b>,强制短期质量/水汽/能量守恒。每通道可学 alpha <em>初始 0=恒等</em>→resume 现有权重<b>无损</b>、训练学 alpha 反涨精度。破解"软约束在已收敛点抢梯度反升 RMSE"的难题。</div>
+  <div class="e">maxvit3d_student_mitai.py:334-356 ConservationCorrection · mitai 实测 <span class="gain">RMSE 18.34→18.18, ACC 0.9833→0.9839(1.13×)</span></div></div>
+<div class="opt"><div class="h">physB 物理特征扩展(架构预备)</div>
+  <div class="m">surf_in 支持从 7(4 气象+3 掩膜)扩到 13(+太阳角 cos + 时钟 sincos4 + 次网格地形 sdor),为 SFNO/球面算子铺垫。</div>
+  <div class="e">maxvit3d_student_physB.py:342-352</div></div>
+
+<h3>1.6 低秩与减脂(关键教训)</h3>
+<div class="opt warn" style="border-left-color:var(--warn)"><div class="h">SVD 事后拆分——<b>否定</b></div>
+  <div class="m">对训好的权重做 SVD 低秩分解(r0.7/0.5/0.35)会掉点,<em>事后拆分不是低秩正解</em>。</div>
+  <div class="e">结果备份/student_svd_r0.7/0.5/0.35.pth(实验后弃用)</div></div>
+<div class="opt good" style="border-left-color:var(--good)"><div class="h">减脂:训练时降维才是低秩正解<span class="tag">U/V</span></div>
+  <div class="m">直接用更小的 mlp_ratio/embed 从头训(ratio2/3),让模型<em>训练时就长在低秩上</em>,而非事后压。减脂曲线甜点在 ratio2-3。</div>
+  <div class="e">结果备份/student_ratio2/ratio3.pth · 见"演进链"</div></div>
+
+<!-- ==================== 2 蒸馏训练 ==================== -->
+<h2 id="s2"><span class="n">②</span>蒸馏与训练优化</h2>
+<p>主线:<b>蒸馏对齐教师(守 W 大盘)+ 真值监督破天花板(补近地面)+ 物理损失治过平滑</b>,再配一整套高效训练/数据工程。</p>
+
+<h3>2.1 蒸馏损失设计</h3>
+<div class="opt w"><div class="h">DTP 双损失(蒸馏 + 真值)<span class="tag">核心</span></div>
+  <div class="m"><code>loss = α·L蒸馏(对教师) + (1-α)·L真值(对 t+6h 真实场)</code>。纯蒸馏天花板 = 教师;掺真值让通道直降方差、<b>可超教师</b>。α=0.5 平衡表达力 vs 技能。</div>
+  <div class="e">distill_train.py:94-95 · distill_scnet.py:147-149 · distill_truth.py:478-493</div></div>
+<div class="opt w"><div class="h">官方加权 L1(逐通道权重)</div>
+  <div class="m">直接对标赛题评分:地表 4ch [1.5,0.77,0.66,3.0]、高空 65ch 按 z3.0/q0.6/t1.5/u0.77/v0.54×13 层。地表 L1 因子 0.25、高空 1.0。</div>
+  <div class="e">distill_cache.py:20-21,267</div></div>
+
+<h3>2.2 真值监督(破天花板——W 提分主力)</h3>
+<div class="opt w"><div class="h">温度掺真值(近地面特殊监督)<span class="tag">W</span></div>
+  <div class="m">2m_t + 近地面 temperature 层做 α·教师+(1-α)·真值,其它通道纯蒸馏保流形。温度是评分主通道,直接对真值才能超教师。</div>
+  <div class="e">distill_truth.py:274-275,484-493 · T_UPPER_NEAR=[26,27,28]</div></div>
+<div class="opt w"><div class="h">全温度层监督(--full-temp)<span class="tag">W</span></div>
+  <div class="m">覆盖全 13 温度层真值,防"只监督近地面→中高层温度经共享 backbone 被带歪(高空漂移)"。</div>
+  <div class="e">distill_truth.py:144-145,505-512 · 修正共享 recovery 头漂移</div></div>
+<div class="opt w"><div class="h">风/湿/位势保护(--protect)</div>
+  <div class="m">温度真值训练可能经共享 backbone 把 u/v/z/msl 带歪;给它们蒸馏权重×1.5-2.0 锚定教师。</div>
+  <div class="e">distill_truth.py:146-148,227-233 · protect=1.5 恢复 u/v/z ~0.5-1%</div></div>
+<div class="opt w"><div class="h">通道重加权(--chan-reweight)</div>
+  <div class="m">W 归因发现劣化集中在低层 u/v + u10/v10 + q(patch16 粗粒化伤害大),对这些通道单独×倍数补偿。</div>
+  <div class="e">distill_truth.py:152-159,234-253 · 低层 RMSE↓10-20%</div></div>
+<div class="opt w"><div class="h">区域加权(--region-weight)</div>
+  <div class="m">陆地 + 高地形 + 极地(|lat|&gt;60)格点权重×倍数,补陆地/极地蒸馏不足。</div>
+  <div class="e">distill_truth.py:154-155,256-268 · 陆地/极地 RMSE↓5-8%</div></div>
+<div class="opt w"><div class="h">增量逆方差权重(--ivw)</div>
+  <div class="m">统计每通道 6h 增量 std,用 1/std 加权→温度小增量(~0.07-0.12K)自动放大梯度,不被大信号(风)压制。</div>
+  <div class="e">distill_cache.py:175-184 · 结果备份/student_A_ivw</div></div>
+
+<h3>2.3 物理损失(治过平滑,谱域)</h3>
+<div class="opt w"><div class="h">频域谱蒸馏(FFT log-power / 球谐 SHT)</div>
+  <div class="m">对齐师生输出功率谱:平面 <code>log(|FFT|²)</code> L1 或球谐角功率 C_ℓ。patch16 过平滑→高频功率低→被罚→补回细节。球谐版极区不失真。</div>
+  <div class="e">distill_cache.py:32-40 · distill_cache_phys.py:43-56 · --spec 0.05-0.2</div></div>
+<div class="opt w"><div class="h">高频谱损失(--hf-spec)+ 梯度损失(--grad-w)+ 高低频分离(--hf-w)</div>
+  <div class="m">hf-spec 专罚波数&gt;kmin 的高频差(救小尺度);grad 罚水平梯度差(治块状/棋盘伪影);hf-w 走 SDKD——高频对真值(教师高频不可信)、低频对教师。</div>
+  <div class="e">distill_truth.py:62-83,167-172 · distill_cache_phys.py:64-80</div></div>
+<div class="opt warn" style="border-left-color:var(--warn)"><div class="h">为什么软约束一度失败 + 怎么救</div>
+  <div class="m">早期 FFT 幅度量级过大(1e3+),谱损失权重 0.1 即训崩(RMSE 675, ACC&lt;0)。<b>救:log 压缩功率到 O(1) + 前 5 epoch warmup 慢加权 + fp32 算 FFT</b>。这也是"物理该搬架构层(硬约束)而非当软损失抢梯度"的由来。</div>
+  <div class="e">distill_cache.py:36-38 · distill_truth.py:515</div></div>
+
+<h3>2.4 优化器与训练技巧</h3>
+<div class="opt v"><div class="h">Muon 优化器(2D 权重)+ AdamW(其余)分组<span class="tag">V</span></div>
+  <div class="m">attn/mlp 的 QKV/W_out 用 Muon(Newton-Schulz 正交化动量,lr~0.02);embed/norm/conv/bias 用 AdamW(lr 6e-4)。小模型 Muon 减 30-40% 训练时间。</div>
+  <div class="e">distill_cache.py:213-226 · abc66 实测 train_loss Muon 0.232&lt;AdamW 0.255</div></div>
+<div class="opt"><div class="h">AdamW 基线 + lr 策略</div>
+  <div class="m">betas(0.9,0.95) 更激进动量、wd 0.05(偶尔升 0.15-0.2 压激活治 fp16 溢出)、warmup(4-5ep)+ 余弦退火、梯度裁剪 1.0。</div>
+  <div class="e">distill_scnet.py:102-108 · distill_truth.py:126</div></div>
+<div class="opt w"><div class="h">EMA(0.999)+ bf16 混精 + 梯度检查点</div>
+  <div class="m">EMA 平滑权重(比末权重 val 高 1-3%);bf16 autocast forward + fp32 backward(显存↓40-50%,无精度损失);梯度检查点激活重算(显存↓50%,可配)。</div>
+  <div class="e">distill_cache.py:60-64 · distill_scnet.py:138-144</div></div>
+<div class="opt w"><div class="h">DTP 动态加权(per-channel 自动均衡)</div>
+  <div class="m">每 epoch 按每通道对教师 L1 的 EMA 自动调权(难通道加权、clamp[0.3,3.0]),均衡学习、防局部过拟合。最重通道常是低层风。</div>
+  <div class="e">distill_cache.py:251-295 · distill_truth.py:540-543</div></div>
+
+<h3>2.5 数据与缓存管线</h3>
+<div class="grid2">
+  <div class="opt v"><div class="h">RAM 缓存(distill_cache)<span class="tag">V</span></div>
+    <div class="m">一次性生成教师目标(fp16)存 RAM,训练循环不再跑教师,单 step 1900ms→900ms。~377GB(1300 样本)。</div>
+    <div class="e">distill_cache.py:157-174</div></div>
+  <div class="opt"><div class="h">落盘缓存(distill_diskcache)</div>
+    <div class="m">教师目标预算落 .npy,DataLoader 按需读,规避 DeepLN 容器&lt;44G OOM,可上全量历史。</div>
+    <div class="e">distill_diskcache.py:124-148</div></div>
+  <div class="opt w"><div class="h">经度滚动增广</div>
+    <div class="m">地球经向周期对称→随机 roll 经度合法,等 epoch 有效数据翻倍,RMSE↓3-5%(abc66 24×)。</div>
+    <div class="e">distill_cache.py:262-264</div></div>
+  <div class="opt"><div class="h">99ch→69ch + 连续 6h 真值对</div>
+    <div class="m">meta99 重排选 69,拼 [surf4+掩膜3+upper65];era5_cont 相邻差恰 6h 供真值监督。</div>
+    <div class="e">distill_cache.py:23-25 · distill_truth.py:94-104</div></div>
+</div>
+
+<h3>2.6 多机、Resume 与评测</h3>
+<div class="opt v"><div class="h">多学生共享缓存并行(distill_multi)</div>
+  <div class="m">一份教师缓存(CPU)喂多个学生(各占一 GPU)异步训,4 并行在 2/3 时间对比 4 个架构变体,不再各建缓存 OOM。</div>
+  <div class="e">distill_multi.py:85-111</div></div>
+<div class="opt"><div class="h">Resume 续训 + 双检查点 + 双指标早停</div>
+  <div class="m">补数据/加 epoch 一律从 ckpt resume(绝不从头);每轮存 .pth.ckpt(断点)+ 最优单存;早停看 val_gtL1(对真值,优先)与 val_match(对教师),纬度加权 L1 对齐赛题。</div>
+  <div class="e">distill_truth.py:365-376,414-435,549-555</div></div>
+<div class="opt"><div class="h">高级预备:torch.compile / RKD / weak-to-strong</div>
+  <div class="m">torch.compile reduce-overhead(小模型 wall-time↓15-25%);RKD 关系蒸馏(样本间距离/角度 MSE 补流形,10 行 0 参 RMSE↓1%);weak-to-strong 用旧 1.14× 学生自热身(收敛+30-50%,规划中)。</div>
+  <div class="e">训练范式优化.md</div></div>
+
+<!-- ==================== 3 推理部署 ==================== -->
+<h2 id="s3"><span class="n">③</span>推理 · 显存 · 量化 · DCU 手写核</h2>
+<p>主线:<b>推理期显存四招把峰值从 923MB 压到 548/566MB(全 bit-exact)+ 手写 HIP 核吃满 DCU + 正确计时</b>。全部非持久化、数学等价、不掉 W。</p>
+
+<h3>3.1 推理期显存优化(923MB → 548MB,数学等价)</h3>
+<div class="opt u"><div class="h">SDPA off<span class="tag">U</span></div>
+  <div class="m">本 DCU 的 F.scaled_dot_product_attention 回退分配巨大工作集(~579MB);窗口 token 小(144),naive 注意力<b>反而省 ~199MB 且更快</b>。</div>
+  <div class="e">inference.py:64 · maxvit3d_student.py:154-194 · <span class="gain">−199MB</span></div></div>
+<div class="opt u"><div class="h">空间分块 tiling(stem/head 沿纬度分块)<span class="tag">U</span></div>
+  <div class="m">高分辨率 conv 沿纬度非重叠分块(stride=kernel→<b>bit-exact,maxdiff=0</b>);stem 后立即 <code>untyped_storage().resize_(0)</code> 释放最大常驻输入;编解码逐 block del 中间张量。</div>
+  <div class="e">maxvit3d_student.py:416-556 · <span class="gain">923→548MB</span></div></div>
+<div class="opt u"><div class="h">fp16 输入构造(计时区外)<span class="tag">U</span></div>
+  <div class="m">直接以 fp16 构造输入,避免 fp32 输入 299MB 常驻;与 autocast 内部转换 bit-exact(stem maxdiff=0)。</div>
+  <div class="e">inference.py:56-61,206-209 · <span class="gain">−299MB</span></div></div>
+<div class="opt u"><div class="h">FAST_STREAM 流式(566 档)</div>
+  <div class="m">INPUT_STREAM 把输入留 CPU 逐 strip H2D;REC_OFFLOAD 把 recovery 输出逐 strip D2H 到 pinned buffer。连续 strip-major 布局满 DMA(vs strided gather 44ms)。GPU 峰值降至 ~566MB、fwd ~37ms。</div>
+  <div class="e">inference.py:173-196 · maxvit3d_cpp.py:120-378</div></div>
+
+<h3>3.2 计算快赢与正确性</h3>
+<div class="opt v"><div class="h">Conv→GEMM 快赢<span class="tag">V</span></div>
+  <div class="m">非重叠 patch conv 等价 unfold(im2col)+linear,走 hipBLAS GEMM,<b>避开 MIOpen conv kernel 首样本 JIT 编译 ~5s</b>;fp32 累加保真。</div>
+  <div class="e">maxvit3d_student.py:416-448 · <span class="gain">首样本 −5s</span></div></div>
+<div class="opt"><div class="h">synchronize 正确计时<span class="tag">合规</span></div>
+  <div class="m">DCU 算子异步发射,<code>model(x)</code> 后 <code>end_time</code> 前必须 <code>torch.cuda.synchronize()</code>,否则低估耗时(偏差可达 100ms+),与官方评测口径一致。</div>
+  <div class="e">inference.py:214-218</div></div>
+<div class="opt v"><div class="h">autocast fp16 推理</div>
+  <div class="m">全前向 fp16(权重已 fp16 存储),吃 DCU 半精度算力,时长 ~65.7ms(vs fp32 200ms+)。</div>
+  <div class="e">inference.py:125-126</div></div>
+
+<h3>3.3 权重量化与存储</h3>
+<div class="opt u"><div class="h">fp16 半精度存储(本提交采用)<span class="tag">U</span></div>
+  <div class="m">仅存 model_state_dict+cfg,权重 fp16。加载后与 fp32 autocast 推理数值等价(maxdiff≈0.008,W 与 fp32 一致)。</div>
+  <div class="e">student.pth 10.46MB · <span class="gain">17.47→10.46MB</span></div></div>
+<div class="opt"><div class="h">可选 INT8 对称量化(未用于提交)</div>
+  <div class="m">逐张量/逐通道 scale→5.33MB。<b>但激活占推理显存 99%,权重量化对显存 ROI 有限</b>(显存靠 tiling),故稳健起见用 fp16。INT8>FP8。</div>
+  <div class="e">优化说明文档 · student_qsim_int8pc/fp8pc.pth</div></div>
+
+<h3>3.4 matrix-core 手写 HIP 核(DCU gfx936)</h3>
+<div class="opt v"><div class="h">gemm_lib_mmac:手写 GEMM 库<span class="tag">V</span></div>
+  <div class="m">用 <code>v_mmac</code> 指令(16×16×16 fp16→fp32 累加),<b>per-shape tile 派发</b>(M≤512→32×32;N≥1536→128×256;其余 64×64);不依赖 rocBLAS(省 155MiB)、懒加载消首样本 JIT。</div>
+  <div class="e">02_matrix_core_HIP/gemm_lib_mmac.hip:102-124 · <span class="gain">1.9-2.3× vs hipBLAS</span></div></div>
+<div class="opt v"><div class="h">libflashattn:手写 flash 注意力核<span class="tag">V</span></div>
+  <div class="m">QK-Norm+温度+bias+softmax 一体化,窗口 token 不物化 N×N 分数矩阵,在线计算激活峰值大降。</div>
+  <div class="e">01_推理部署/libflashattn.so · <span class="gain">2.14ms,~2.1× vs SDPA,显存 −200MB</span></div></div>
+<div class="opt"><div class="h">gemm_wint8:INT8 权重 GEMM 核</div>
+  <div class="m">A fp16、W int8[N,K]+per-N scale,kernel 内 dequant→fp16 再走 mmac(权重省存储、运算全 fp16 近无损)。</div>
+  <div class="e">02_matrix_core_HIP/gemm_wint8.hip</div></div>
+<div class="opt v"><div class="h">CppRunner:全算子 HIP 路由 + 优雅降级</div>
+  <div class="m">Linear/Attention/RMSNorm/SwiGLU 全走手写 HIP 核(绑 libgemm.so/libflashattn.so),<b>消 torch kernel 首次懒加载 ~100-150ms</b>;加载失败自动回退 torch。</div>
+  <div class="e">maxvit3d_cpp.py:19-127</div></div>
+<div class="opt w"><div class="h">ENC_FP32:encoder 轻量混合精度(★解锁高 W 权重)<span class="tag">W</span></div>
+  <div class="m">encoder 子层 fp16、<b>残差流走 fp32</b>,解锁一批高激活的"高 W 权重"(纯 fp16 会 NaN),几乎免费涨 W ~1-2 分。这是 96.1213 相对中间版 W 提升的关键推理开关之一。</div>
+  <div class="e">inference.py:8,75 · maxvit3d_cpp.py:399-426 · 见第 ⑤ 节</div></div>
+
+<div class="hipbox"><div class="t">CUDA → HIP 对照(方法论硬件无关,只换工具名)</div>
+  <p style="margin:5px 0"><code>nvidia-smi→hy-smi</code> · <code>ncu/Nsight→rocprof/omniperf</code> · <code>warp32→wave64</code> · <code>Tensor Core→Matrix Core(v_mmac)</code> · <code>cuBLAS→rocBLAS/hipBLASLt</code> · <code>gfx936</code>(BW100)。学生骨架的 grid 稠密化、tiling、手写 mmac/flash 全是为吃满国产卡而设计。</p></div>
+
+<!-- ==================== 4 演进链 ==================== -->
+<h2 id="s4"><span class="n">④</span>实验演进链(41 份权重的时间线)</h2>
+<p>结果备份/ 636MB 41 份权重,清晰记录了整条<b>系统化实验链</b>(时间倒序摘要,文件名即实验)。只有 3 份留了分数记录(其余判优靠 eval 对真值 RMSE)。</p>
+<div class="chain"><span class="d">06-21</span> student_scnet* — SCNet 基线(scnet_fast 可用;scnet_e64 RMSE 674 严重退化,证明 embed 太小崩)</div>
+<div class="chain"><span class="d">06-22</span> student_p16grid_RMSE1.14x / mitai_e96(1.16×)/ dcu_p16fpa — <b>patch16+grid 基线定型 1.14×</b>,fpa 首版</div>
+<div class="chain"><span class="d">06-23</span> mitai_p16grid_muon_109x(1.09×)/ p16grid_conserv_113x(<b>守恒层 1.13×</b>)/ p16fpa_9134 / p16deep / funhpc_*spec — Muon 提速、守恒层涨点、深/频域探索</div>
+<div class="chain"><span class="d">06-24</span> ratio2 / ratio3 / mom99 / svd_r0.7/0.5/0.35 / qsim_int8pc/fp8pc — <b>减脂 ratio 甜点扫描 + Muon 动量 0.99 + SVD 否定 + 量化模拟</b></div>
+<div class="chain"><span class="d">06-25</span> ratio2_dtp(记忆记 95.24)/ residual / A_ivw / e64/e64dtp/p24e64dtp — <b>DTP 双损失 + 残差 + 逆方差权重 + 更小 embed 试探</b></div>
+<div class="chain"><span class="d">06-26</span> <b>student.pth(提交版,10MB)</b> — 最终提交权重</div>
+<div class="callout"><div class="t">演进链读出的方法论</div>
+  <p style="margin:5px 0">先定<b>骨架</b>(patch16+grid 1.14×)→ 上 <b>Muon</b> 提速 → 试<b>守恒层</b>(1.13×)/深/频域 → <b>减脂</b>扫 ratio 甜点(否定 SVD)→ <b>DTP+真值+残差+ivw</b> 攻 W → 定稿。每步小规模先验证再扩大,判优看真值 RMSE 不只看 val_match。</p></div>
+
+<!-- ==================== 5 真相 ==================== -->
+<h2 id="s5"><span class="n">⑤</span>96.1213 最终版真相(为什么 W 从 35.63 冲到 38.44)</h2>
+<div class="band">
+  <b class="k">最终提交栈</b>
+  <ul>
+    <li><b>权重</b>:<code>提交_pangu_weather\_stage\checkpoints\student.pth</code>(2026-06-26,比技术文档更新的最终版)</li>
+    <li><b>架构</b>:embed96 / depths(2,4,2) / patch(2,16,16) / grid / mlp_ratio2.0 → 5.19M</li>
+    <li><b>运行</b>:<code>FAST_STREAM=1</code>(566 档)+ <code>ENC_FP32=1</code> + <code>N_TILES=8</code> + CppRunner 全 HIP + SDPA off</li>
+  </ul>
+</div>
+<p><b>W 从中间版 35.63 → 最终 38.44(+2.81)的三个来源</b>(经代码逐行核查):</p>
+<ol>
+  <li><b class="k">更好的最终权重</b>:提交的 student.pth(6-26)是比技术文档所述更晚、蒸馏更充分的版本(叠加了 DTP/真值监督/残差等 W 提分手段)。</li>
+  <li><b class="k">ENC_FP32 解锁"高 W 权重"(bo1)</b>:inference.py:8 原注释——<em>"默认 enc 轻量混合精度(解锁 bo1 W36.89 避 fp16 NaN;full_final 也安全,几乎免费 +1~2)"</em>。即一批高激活权重纯 fp16 会 NaN,用 fp32 残差流跑起来后 W 更高,几乎免费。</li>
+  <li><b class="k">评测口径</b>:中间版 35.63 是 15 指标口径(近地面 4 项拖累),最终判卷是 69 通道口径(高空拟合好抬均值)。</li>
+</ol>
+<div class="callout warn"><div class="t">关于"bo3b + matrix-core 叠加包"的澄清</div>
+  <p style="margin:5px 0">代码里<b>没有字面 "bo3b" / "matrix-core"</b>字样(全项目搜索只命中 venv 噪声)。找到的是 <code>bo1</code>(W36.89 的高激活权重代号)。所以我记忆里的"双叠加包 bo3b + matrix-core",对应的实体是:<b>① bo1 系高 W 权重(靠 ENC_FP32 解锁)+ ② matrix-core 手写 HIP 核(gemm_mmac/flashattn 那套推理栈)</b>。命名是当时口头简称,不是代码符号。</p></div>
+<div class="callout"><div class="t">代价:U/V 微降换 W 大涨(值得)</div>
+  <p style="margin:5px 0">U 39.01→38.74(权重/显存版本略大)、V 19.40→18.94(ENC_FP32 略慢),合计 −0.73;换来 W +2.81。<b>净 +2.08,把 94.04 顶到 96.12</b>——这正是"U/V 已近满、提分重心在 W"策略的兑现(见 L1)。</p></div>
+
+<!-- ==================== 6 口径 ==================== -->
+<h2 id="s6"><span class="n">⑥</span>评测口径与 U/V/W 公式</h2>
+<div class="band">
+  <p style="margin:6px 0"><b class="k">U</b> = 模型大小项 + 推理显存项 = <span class="fx">(1 − 学生权重/教师权重)×20 + (1 − 学生显存/教师显存)×20</span></p>
+  <p style="margin:6px 0"><b style="color:var(--v)">V</b> = <span class="fx">(1 − 1/S<sup>1.3</sup>)×20</span>,S = 教师时长/学生时长</p>
+  <p style="margin:6px 0"><b style="color:var(--w)">W</b> = 逐通道 <span class="fx">min((教师RMSE/学生RMSE)², 1) + min((学生ACC/教师ACC)², 1)</span>,再求均值×系数</p>
+  <p style="margin:6px 0;color:var(--mut);font-size:14px"><b>两口径</b>:15 指标(官方钦定,近地面 4 项拖累,W=35.63)vs 69 通道(全变量,高空抬均值,W=36.24→最终 38.44)。score_final.py 用 <code>C=69</code>。</p>
+</div>
+
+<div class="foot">
+  <p>先导杯 · 气象大模型轻量化 · <b>全项目优化点总账</b> —— 基于对 提交_pangu_weather / 结果备份(41 权重)/ 复赛备战课程 / distill 12 变体 / maxvit3d 4 变体 / 融合升级路线 / 训练范式优化 的逐文件核查综合。</p>
+  <p>配套 10 讲逐模块讲解见同目录 <code>L1-L10</code>。真实判卷成绩 <b>U 38.7447 + V 18.9379 + W 38.4387 = 96.1213</b>。</p>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>气象大模型轻量化 · 上 90 分的方法与方向</title>
+<style>
+  :root{
+    --ink:#18202a; --ink2:#37424f; --mut:#68727e; --line:#e6e9ed;
+    --paper:#ffffff; --band:#f5f8fa; --accent:#0f766e; --accent2:#b45309;
+    --u:#0e7490; --v:#7c3aed; --w:#b91c1c; --good:#15803d; --warn:#a16207; --deep:#0f766e;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.88;font-size:16.5px;letter-spacing:.1px}
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px 100px}
+  header.hero{padding:48px 24px 30px;border-bottom:3px solid var(--deep);background:linear-gradient(180deg,#f2faf8,#fff)}
+  .hero-inner{max-width:960px;margin:0 auto}
+  .kicker{color:var(--deep);font-weight:700;letter-spacing:2px;font-size:13px}
+  h1{font-size:31px;line-height:1.3;margin:12px 0 8px}
+  h1 .g{color:var(--deep)}
+  .sub{color:var(--mut);font-size:16px;max-width:840px}
+  .pills{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap}
+  .pill{background:var(--band);border:1px solid var(--line);border-radius:999px;padding:5px 13px;font-size:13px;color:var(--ink2)}
+  .pill b{color:var(--deep)}
+  h2{font-size:23px;margin:50px 0 10px;padding-top:14px;border-top:2px solid var(--deep)}
+  h2 .n{display:inline-block;min-width:34px;height:34px;line-height:34px;text-align:center;border-radius:9px;background:var(--deep);color:#fff;font-size:15px;margin-right:10px;padding:0 7px;vertical-align:3px}
+  h3{font-size:18px;margin:24px 0 6px;color:var(--ink)}
+  p{margin:11px 0} .lead{font-size:17.5px;color:var(--ink2)}
+  em{font-style:normal;background:linear-gradient(transparent 60%,#fde68a 60%);padding:0 1px;font-weight:600}
+  b.k{color:var(--deep)}
+  code{background:#eef4f3;border:1px solid #dcebe8;border-radius:5px;padding:1px 6px;font-family:"Cascadia Code",Consolas,monospace;font-size:13px;color:#0b5563}
+  ul,ol{margin:9px 0;padding-left:22px} li{margin:6px 0}
+  .band{background:var(--band);border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:20px 0}
+  .why{border-left:5px solid var(--deep);background:#f0faf8;border-radius:0 12px 12px 0;padding:13px 18px;margin:14px 0}
+  .why .t{font-weight:700;color:var(--deep);margin-bottom:2px}
+  .callout{border-left:5px solid var(--accent2);background:#fffdf3;border-radius:0 12px 12px 0;padding:13px 18px;margin:16px 0}
+  .callout .t{font-weight:700;margin-bottom:2px}
+  figure{margin:24px 0;text-align:center}
+  figure svg{max-width:100%;height:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+  figcaption{color:var(--mut);font-size:13.5px;margin-top:9px}
+  /* 方法菜单 */
+  .menu{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:14px 0}
+  .menu .item{display:flex;gap:12px;padding:11px 16px;border-top:1px solid var(--line);align-items:flex-start}
+  .menu .item:first-child{border-top:none}
+  .menu .nm{min-width:170px;font-weight:700;color:var(--ink);font-size:14.5px}
+  .menu .nm .star{color:var(--deep);font-size:12px;font-weight:800}
+  .menu .ds{color:var(--ink2);font-size:14px;flex:1}
+  .menu .ds .tag{display:inline-block;font-size:11px;color:#fff;border-radius:4px;padding:0 6px;margin-left:4px;vertical-align:1px}
+  .tagU{background:var(--u)} .tagV{background:var(--v)} .tagW{background:var(--w)}
+  @media(max-width:680px){.menu .item{flex-direction:column;gap:2px}.menu .nm{min-width:0}}
+  .hipbox{border:1px dashed #b45309;background:#fffdf6;border-radius:12px;padding:14px 18px;margin:18px 0}
+  .hipbox .t{color:var(--accent2);font-weight:700}
+  .toc{columns:2;gap:22px;margin:14px 0;font-size:14px}
+  @media(max-width:680px){.toc{columns:1}}
+  .toc a{color:var(--deep);text-decoration:none} .toc a:hover{text-decoration:underline}
+  .foot{margin-top:54px;padding-top:18px;border-top:3px solid var(--deep);color:var(--mut);font-size:13px}
+  .keypts{background:linear-gradient(180deg,#f0faf8,#fff);border:1px solid #cfe9e4;border-radius:14px;padding:18px 22px;margin:22px 0}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <div class="kicker">气象大模型轻量化(先导杯赛题二 · 海光 DCU)· 方法论</div>
+    <h1>如何在气象轻量化赛题上<span class="g">冲过 90 分</span>:方法与方向</h1>
+    <p class="sub">这是一张<b>战略地图</b>:上 90 分需要往哪几个方向走、每个方向<em>为什么</em>重要,以及每个方向下有哪些<b>可选的实现方法</b>。每个方向都给一份可挑选的方法菜单,列出业界/文献里常见且有效的方案,按任务需要组合即可。</p>
+    <div class="pills">
+      <span class="pill">总分 = <b>U40 + V20 + W40</b></span>
+      <span class="pill">U/V 近满不难</span>
+      <span class="pill">90 分胜负手在 <b>W</b></span>
+      <span class="pill">8 大方向 · 方法菜单</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<div class="band">
+  <b class="k">方向导航</b>
+  <div class="toc">
+    <a href="#s0">0 · 上 90 的总账:钱花在哪</a><br>
+    <a href="#s1">方向一 · 轻量骨架选型(拿 U/V 地基)</a><br>
+    <a href="#s2">方向二 · 降 token 降算力(拿 V)</a><br>
+    <a href="#s3">方向三 · 现代组件:稳训省参</a><br>
+    <a href="#s4">方向四 · 蒸馏范式(守 W 大盘)</a><br>
+    <a href="#s5">方向五 · 真值监督破天花板(攻 W 决胜)</a><br>
+    <a href="#s6">方向六 · 物理先验(攻 W · 气象独有)</a><br>
+    <a href="#s7">方向七 · 推理部署榨 U/V</a><br>
+    <a href="#s8">方向八 · 判优与迭代方法论</a><br>
+    <a href="#s9">上 90 优先级路线</a>
+  </div>
+</div>
+
+<!-- 0 -->
+<h2 id="s0"><span class="n">0</span>上 90 的总账:分该花在哪</h2>
+<p class="lead">先想清楚 90 分从哪来。总分 = <b class="k">U</b>(模型大小+推理显存,40)+ <b style="color:var(--v)">V</b>(推理时长,20)+ <b style="color:var(--w)">W</b>(预测精度,40)。三维的<em>提分难度天差地别</em>:</p>
+<figure>
+<svg viewBox="0 0 900 220" role="img" aria-label="上90分账">
+  <text x="24" y="28" font-size="16" font-weight="700" fill="#18202a">三维提分难度:U/V 容易近满,W 是唯一的硬骨头</text>
+  <!-- U -->
+  <text x="24" y="70" font-size="14" fill="#0e7490" font-weight="700">U 40</text>
+  <rect x="120" y="55" width="700" height="22" rx="5" fill="#e5e7eb"/><rect x="120" y="55" width="678" height="22" rx="5" fill="#0e7490"/>
+  <text x="828" y="72" font-size="11.5" fill="#0e7490">轻骨架+量化→轻松 97%</text>
+  <!-- V -->
+  <text x="24" y="112" font-size="14" fill="#7c3aed" font-weight="700">V 20</text>
+  <rect x="120" y="97" width="700" height="22" rx="5" fill="#e5e7eb"/><rect x="120" y="97" width="662" height="22" rx="5" fill="#7c3aed"/>
+  <text x="828" y="114" font-size="11.5" fill="#7c3aed">降token+部署→轻松 95%</text>
+  <!-- W -->
+  <text x="24" y="154" font-size="14" fill="#b91c1c" font-weight="700">W 40</text>
+  <rect x="120" y="139" width="700" height="22" rx="5" fill="#e5e7eb"/><rect x="120" y="139" width="560" height="22" rx="5" fill="#b91c1c"/>
+  <text x="686" y="156" font-size="11.5" fill="#b91c1c" font-weight="700">← 精度,越往上越难,决定能否上 90</text>
+  <text x="24" y="198" font-size="13.5" fill="#37424f"><tspan font-weight="700">结论:</tspan>U/V 靠"选对轻量骨架 + 部署优化"就能拿到 95%+;<tspan font-weight="700" fill="#b91c1c">90 分的胜负手全在 W</tspan> —— 也就是"蒸馏 + 真值监督 + 物理先验"这条线。</text>
+</svg>
+</figure>
+<div class="why"><div class="t">为什么这么分</div>
+  <p style="margin:5px 0">U 是"越小越好"的线性分、V 被加速比的指数压平——两者一旦选了够小够快的学生 + 做了基本的部署优化,就都进了 <b>97% 的平台区</b>,再抠性价比极低。而 W 是气象预报的真本事,<em>越接近教师越难、想超教师更难</em>。所以:<b>把 U/V 快速拿够,把主要精力和创新押在 W 上</b>——这是上 90 的总策略。</p></div>
+
+<!-- 1 -->
+<h2 id="s1"><span class="n">1</span>方向一 · 轻量骨架选型(拿 U/V 的地基)</h2>
+<div class="why"><div class="t">为什么:骨架决定了 U/V 的天花板和 W 的起点</div>
+  <p style="margin:5px 0">气象场是<b>规则网格 + 强长程依赖 + 多层三维</b>。骨架既要够小够快(U/V),又要有<b>全局感受野</b>去抓天气系统(W 的地基)。选错骨架,后面怎么调都费劲。核心矛盾:全局注意力 O(N²) 太贵——要找<em>次线性又对硬件友好</em>的全局机制。</p></div>
+<div class="menu">
+  <div class="item"><div class="nm">MaxViT(block+grid)</div><div class="ds">局部窗口 + 等距稀疏全局交替,线性复杂度、对稠密 GEMM 友好。<span class="tag tagU">U</span><span class="tag tagV">V</span></div></div>
+  <div class="item"><div class="nm">Swin / SwinV2</div><div class="ds">移位窗口注意力,经典强基线;但移位 gather 对国产卡不够规整,教师 Pangu 用的就是它。</div></div>
+  <div class="item"><div class="nm">FNO / AFNO / SFNO</div><div class="ds">傅里叶神经算子,频域一次拿全局 O(N log N);SFNO 用球面调和,<em>天然适配地球球面</em>,是气象大热方向。</div></div>
+  <div class="item"><div class="nm">Transolver / 线性注意力骨干</div><div class="ds">物理 slice / 原型注意力把 O(N²) 降到 O(N·M),内容自适应、对稠密 GEMM 友好。</div></div>
+  <div class="item"><div class="nm">GraphCast / GNN</div><div class="ds">图神经网络,适配不规则网格 / 多分辨率二十面体;DeepMind 气象 SOTA 路线之一。</div></div>
+  <div class="item"><div class="nm">U-Net / U 形多尺度(叠加项)</div><div class="ds">不是独立骨架,而是"下采样把主干算力放低分辨率"的通用结构,任何骨架都该叠上,直接省 U/V。<span class="tag tagV">V</span></div></div>
+</div>
+<div class="callout"><div class="t">选型建议</div>
+  <p style="margin:5px 0">冲 90:优先 <b>MaxViT / SFNO / 线性注意力骨干</b> + <b>U 形多尺度</b>。要"稳妥拿分"选 MaxViT(工程成熟、DCU 友好);要"赌上限 + 物理契合"可试 SFNO(球面等变);算力紧就上线性注意力。三者都能把 token 复杂度压到次线性。</p></div>
+
+<!-- 2 -->
+<h2 id="s2"><span class="n">2</span>方向二 · 降 token / 降算力(把 V 拿满)</h2>
+<div class="why"><div class="t">为什么:注意力和 FFN 的成本随 token 数走,token 是最粗的旋钮</div>
+  <p style="margin:5px 0">721×1440 的场即使打成 patch 也有几十万 token。<b>token 少一半,主干便宜一大截</b>,V 和 U 同时受益。降 token 有很多手段,可叠加使用。</p></div>
+<div class="menu">
+  <div class="item"><div class="nm">大 patch</div><div class="ds">增大 patch 尺寸把 token 数降一个量级,最粗的一刀;细节靠 stem/局部注意力/skip 补回。<span class="tag tagV">V</span><span class="tag tagU">U</span></div></div>
+  <div class="item"><div class="nm">U 形下采样</div><div class="ds">主干最深的计算放在下采样后的 1/4 token 上。<span class="tag tagV">V</span></div></div>
+  <div class="item"><div class="nm">Token Merging(ToMe / ALGM)</div><div class="ds">免训练地把相似 token 合并,推理期动态降 token,即插即用。</div></div>
+  <div class="item"><div class="nm">线性 / 稀疏注意力</div><div class="ds">Performer / Linformer / Agent Attention(线性),axial / 局部窗口 / grid(稀疏)——把 O(N²) 降到 O(N) 或 O(N·M)。</div></div>
+  <div class="item"><div class="nm">频域全局(FNO 类)</div><div class="ds">FFT 一次拿全局 O(N log N),不用逐 token 两两算,是"绕过 token 复杂度"的另一条路。</div></div>
+</div>
+
+<!-- 3 -->
+<h2 id="s3"><span class="n">3</span>方向三 · 现代组件:让小模型训得稳、参不涨</h2>
+<div class="why"><div class="t">为什么:5M 级小模型容量紧,组件选对能"白拿"稳定性和表达力</div>
+  <p style="margin:5px 0">把 block 内部的归一化、注意力缩放、FFN 换成 2024–2026 的现代选择,<em>既省参又稳训</em>,让学生能更深更窄地逼近教师。这些几乎是"免费午餐"。</p></div>
+<div class="menu">
+  <div class="item"><div class="nm">QK-Norm + 可学习温度</div><div class="ds">q,k 单位化成余弦 + 每头温度,治点积幅度发散、softmax 饱和,可更深更窄(SwinV2)。</div></div>
+  <div class="item"><div class="nm">σReparam / ReZero / DeepNorm</div><div class="ds">其它稳深层注意力/残差的方案:σReparam 谱归一、ReZero 零初始、DeepNorm 残差缩放,可替代或叠加 LayerScale。</div></div>
+  <div class="item"><div class="nm">RMSNorm</div><div class="ds">去中心化、无 β,比 LayerNorm 轻、显存省、DCU 友好(现代 LLM 标配)。</div></div>
+  <div class="item"><div class="nm">SwiGLU 门控 FFN</div><div class="ds">隐藏维取 8/3d,白拿门控表达力却不涨参;同类可选 GeGLU / ReGLU。</div></div>
+  <div class="item"><div class="nm">LayerScale + DropPath</div><div class="ds">残差分支慢启动 + 随机深度正则,稳深层、防过拟合。</div></div>
+</div>
+
+<!-- 4 -->
+<h2 id="s4"><span class="n">4</span>方向四 · 蒸馏范式(守住 W 的大盘)</h2>
+<div class="why"><div class="t">为什么:小模型直接对真值训难收敛,蒸馏让它站在教师肩膀上</div>
+  <p style="margin:5px 0">教师的软标签携带"大气各处怎么协同"的丰富结构信息,比硬标签好带得多。蒸馏先把 W 的大盘守住(逼近教师),再谈超越。蒸馏有多种信号可用,能叠加。</p></div>
+<div class="menu">
+  <div class="item"><div class="nm">输出蒸馏(软标签)</div><div class="ds">直接对齐教师输出场(加权 L1)。最基础也最有效,是主干。<span class="tag tagW">W</span></div></div>
+  <div class="item"><div class="nm">特征蒸馏(FitNets)</div><div class="ds">对齐师生<em>中间层特征</em>,传递更细的表征;需师生维度对齐或加投影。</div></div>
+  <div class="item"><div class="nm">关系蒸馏(RKD)</div><div class="ds">对齐 batch 内样本间的距离/角度关系,补回流形结构;0 参 10 行,直接加在 L1 上。</div></div>
+  <div class="item"><div class="nm">注意力蒸馏(AT)/ DKD</div><div class="ds">对齐注意力图(AT);DKD 把蒸馏损失解耦成目标/非目标两部分单独加权。</div></div>
+  <div class="item"><div class="nm">自蒸馏 / weak-to-strong</div><div class="ds">用低质量旧学生先热身,再切真教师,加速收敛 30–50%。</div></div>
+</div>
+
+<!-- 5 -->
+<h2 id="s5"><span class="n">5</span>方向五 · 真值监督破天花板(攻 W 的决胜手)</h2>
+<div class="why"><div class="t">为什么:纯蒸馏的天花板就是教师,想上 90 必须"超教师"</div>
+  <p style="margin:5px 0">蒸馏让学生"像教师",精度永远 ≤ 教师。<b>要涨到 90,必须让学生在关键通道反超教师</b>——唯一的办法是引入不受教师限制的<em>真值信号</em>。这是精度提升空间最大的一块,也是这类赛题最值得投入的方向。</p></div>
+<div class="menu">
+  <div class="item"><div class="nm">双损失(蒸馏+真值)</div><div class="ds">loss = α·教师 + (1−α)·真值。真值这一路不受教师限,让关键通道(尤其温度)有机会反超教师。<span class="tag tagW">W</span></div></div>
+  <div class="item"><div class="nm">多步 rollout 微调</div><div class="ds">GraphCast / Stormer / Aurora 的杀手锏:让模型自回归滚动 N 步再对真值算损失,直接优化长期预报技能。气象上 SOTA 标配。</div></div>
+  <div class="item"><div class="nm">通道 / 区域加权</div><div class="ds">对短板通道(低层风/湿)和区域(陆地/极地)单独加权,精准补洼地。</div></div>
+  <div class="item"><div class="nm">残差/趋势预测(tendency)</div><div class="ds">只学 6h 增量而非绝对场,任务更简单、梯度更稳,是气象预报常用先验。</div></div>
+  <div class="item"><div class="nm">不确定性 / 逆方差加权</div><div class="ds">按每通道增量方差自动调权(逆方差 ivw),让小信号(温度)梯度不被大信号(风)压制;也可用可学习的同方差不确定性权重。</div></div>
+</div>
+<div class="callout"><div class="t">一个隐蔽的坑(值得记住)</div>
+  <p style="margin:5px 0">真值监督常有"<b>共享头污染</b>"问题:只监督部分输出(如近地面温度),会经共享参数把<em>没监督的部分带歪</em>(高空温度漂移)。破法:要么<b>全量监督</b>(全层真值),要么<b>把输出头拆开</b>。多任务/多输出模型都要防这个。</p></div>
+
+<!-- 6 -->
+<h2 id="s6"><span class="n">6</span>方向六 · 物理先验(攻 W · 气象独有的加分项)</h2>
+<div class="why"><div class="t">为什么:气象有物理规律,用好了是纯数据方法拿不到的分</div>
+  <p style="margin:5px 0">大气遵守守恒律、有球面几何、有多尺度谱结构。把这些<b>物理先验</b>注入模型,能在数据之外再挤出精度。但<em>注入方式很讲究</em>——软约束容易失败,硬约束/架构级才稳。</p></div>
+<div class="menu">
+  <div class="item"><div class="nm">谱损失 / 频域约束(软约束)</div><div class="ds">罚师生功率谱差,治学生"过平滑"。<b>但有坑</b>:谱损失和 RMSE 会抢梯度、量级易失控,要 log 压缩 + warmup 才不训崩。</div></div>
+  <div class="item"><div class="nm">守恒硬约束层(架构级)</div><div class="ds">输出后加一层纬度加权全球均值校正,<b>硬性满足质量/能量守恒</b>;可用恒等初始化以便在已训权重上无损接入。相比软约束更稳定。<span class="tag tagW">W</span></div></div>
+  <div class="item"><div class="nm">SFNO / 等变网络</div><div class="ds">球面调和算子、旋转等变、Clifford 层——把地球对称性写进网络结构,物理一致性更强。</div></div>
+  <div class="item"><div class="nm">物理特征输入</div><div class="ds">把太阳天顶角、地形、海陆掩膜、次网格地形等物理量当额外输入通道喂进去,给模型显式先验。</div></div>
+  <div class="item"><div class="nm">分频融合(DRIFT-Net 等)</div><div class="ds">高频走局部/block、低频走全局/谱,分频段各用最合适的算子,兼顾细节与大尺度。</div></div>
+</div>
+<div class="callout"><div class="t">关键经验:物理该"搬进架构"而非"当软损失"</div>
+  <p style="margin:5px 0">一个常见经验:谱/梯度这类<b>软约束</b>在已收敛点容易<em>抢梯度、反升 RMSE</em>,较难稳定涨分且调参敏感;而把物理规律做成<b>架构级硬约束</b>(如恒等初始化的后置校正层)通常更稳、可无损接入。<em>大体倾向:架构硬约束 / 物理特征输入 比谱软约束更可靠</em>——具体仍需按数据实测。</p></div>
+
+<!-- 7 -->
+<h2 id="s7"><span class="n">7</span>方向七 · 推理部署榨 U/V(不掉 W 的免费分)</h2>
+<div class="why"><div class="t">为什么:U 的显存项、V 的时长项,大半靠部署期"数学等价"优化拿</div>
+  <p style="margin:5px 0">这些优化<b>不改精度(bit-exact 或数值等价)</b>,纯赚 U/V,是性价比极高的"免费分"。多个手段可叠加。</p></div>
+<div class="menu">
+  <div class="item"><div class="nm">显存分块 tiling + 及时释放</div><div class="ds">高分辨率卷积沿维度分块(非重叠→bit-exact)、用完即释放中间张量,峰值显存可降三四成。<span class="tag tagU">U</span></div></div>
+  <div class="item"><div class="nm">权重量化 fp16 / INT8</div><div class="ds">fp16 存储数值等价即用;可选 INT8/FP8(PTQ/QAT/SmoothQuant)、张量分解(Tucker/TT)、剪枝进一步压。<span class="tag tagU">U</span></div></div>
+  <div class="item"><div class="nm">混合精度(对数值敏感层保高精度)</div><div class="ds">对激活/残差数值范围大的敏感层保留较高精度,避免纯低精度下的溢出/NaN,在几乎不增成本的前提下守住精度。</div></div>
+  <div class="item"><div class="nm">手写融合核 / flash</div><div class="ds">HIP flash 注意力(不物化 N×N)、融合 GEMM;通用可选 FlashAttention、TensorRT、ONNX Runtime、CUDA Graph、torch.compile。<span class="tag tagV">V</span></div></div>
+  <div class="item"><div class="nm">正确计时(synchronize)</div><div class="ds">异步算子必须同步后计时,否则低估耗时、评测不一致。合规基本功。</div></div>
+</div>
+
+<!-- 8 -->
+<h2 id="s8"><span class="n">8</span>方向八 · 判优与迭代方法论(别在错的方向上使劲)</h2>
+<div class="why"><div class="t">为什么:90 分是一堆此消彼长的通道账,判错优就白干</div>
+  <p style="margin:5px 0">攻 W 的每一招几乎都是双刃(补这里、歪那里)。<b>判优的口径错了,会把真正涨分的模型误杀、把过拟合的模型当宝</b>。方法论本身就是分。</p></div>
+<div class="menu">
+  <div class="item"><div class="nm">以判卷/真值为准</div><div class="ds">最终只认官方判卷(或对真值的 RMSE);离线代理指标(对教师的 match、ppl 等)只作参考,不当结论。</div></div>
+  <div class="item"><div class="nm">双指标 + 逐通道诊断</div><div class="ds">同时看"对真值(技能)"和"对教师(表达力)";逐通道看谁涨谁跌,才知道下一刀砍哪。</div></div>
+  <div class="item"><div class="nm">小规模先验证再扩大</div><div class="ds">新想法先在小数据/少 epoch 冒烟,有效再上全量;省算力、快迭代。</div></div>
+  <div class="item"><div class="nm">消融 + A/B 对照</div><div class="ds">每个改动单独开关做 A/B,归因清楚"这 0.x 分是谁贡献的",避免"一起上、说不清"。</div></div>
+</div>
+
+<!-- 9 -->
+<h2 id="s9"><span class="n">9</span>上 90 优先级路线:先做什么、后做什么</h2>
+<figure>
+<svg viewBox="0 0 900 300" role="img" aria-label="上90优先级">
+  <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
+  <text x="24" y="28" font-size="16" font-weight="700" fill="#18202a">上 90 的推荐节奏:先拿满 U/V 底子,再把火力全压在 W</text>
+  <!-- step1 -->
+  <rect x="30" y="55" width="250" height="70" rx="10" fill="#ecfeff" stroke="#0e7490"/>
+  <text x="155" y="80" font-size="13.5" font-weight="700" fill="#0e7490" text-anchor="middle">① 底子(拿 U/V 到 ~95%)</text>
+  <text x="155" y="100" font-size="11" fill="#68727e" text-anchor="middle">轻量骨架 + U形下采样 + 大patch</text>
+  <text x="155" y="116" font-size="11" fill="#68727e" text-anchor="middle">+ 现代组件 + fp16 + 显存tiling</text>
+  <!-- step2 -->
+  <rect x="325" y="55" width="250" height="70" rx="10" fill="#fef2f2" stroke="#b91c1c"/>
+  <text x="450" y="80" font-size="13.5" font-weight="700" fill="#b91c1c" text-anchor="middle">② 守 W(蒸馏对齐教师)</text>
+  <text x="450" y="100" font-size="11" fill="#68727e" text-anchor="middle">输出蒸馏 + 加权L1 + EMA/bf16</text>
+  <text x="450" y="116" font-size="11" fill="#68727e" text-anchor="middle">→ W 逼近教师(约到 94–95)</text>
+  <!-- step3 -->
+  <rect x="620" y="55" width="250" height="70" rx="10" fill="#fff7ed" stroke="#b45309"/>
+  <text x="745" y="80" font-size="13.5" font-weight="700" fill="#b45309" text-anchor="middle">③ 破 W(真值+物理)</text>
+  <text x="745" y="100" font-size="11" fill="#68727e" text-anchor="middle">真值监督 + full监督防漂移</text>
+  <text x="745" y="116" font-size="11" fill="#68727e" text-anchor="middle">+ 守恒硬约束 → 超教师上 90+</text>
+  <line x1="280" y1="90" x2="323" y2="90" stroke="#94a3b8" stroke-width="2" marker-end="url(#ar)"/>
+  <line x1="575" y1="90" x2="618" y2="90" stroke="#94a3b8" stroke-width="2" marker-end="url(#ar)"/>
+  <!-- 决胜标注 -->
+  <rect x="620" y="140" width="250" height="30" rx="6" fill="#fef3c7"/><text x="745" y="160" font-size="12" fill="#7c2d12" text-anchor="middle" font-weight="700">决胜在这一步(投入产出最高)</text>
+  <!-- bottom priority list -->
+  <text x="30" y="205" font-size="13.5" font-weight="700" fill="#18202a">按"每分性价比"排的动作优先级:</text>
+  <text x="40" y="230" font-size="12.5" fill="#37424f">1. 选对轻量骨架 + U形 + 大patch(一次性拿下 U/V 大头)　2. 输出蒸馏 + 加权L1(把 W 抬到教师附近)</text>
+  <text x="40" y="252" font-size="12.5" fill="#37424f">3. 真值监督破天花板(温度/风/湿逐项补洼地,防共享头漂移)　4. 守恒硬约束层(物理无损反涨)</text>
+  <text x="40" y="274" font-size="12.5" fill="#37424f">5. 部署榨 U/V(tiling/量化/融合核/混合精度解锁高W权重)　6. 全程:判卷为准 + 逐通道诊断 + 小规模先验</text>
+</svg>
+</figure>
+<div class="hipbox"><div class="t">HIP / 国产 DCU 视角(方法论硬件无关,只换工具)</div>
+  <p style="margin:5px 0">冲 90 若跑<b>海光 DCU(gfx936)</b>:骨架优先选<b>规整稠密 GEMM</b>友好的(grid/线性注意力 &gt; 移位窗口);部署用 <code>hy-smi</code> 看显存、<code>rocprof/omniperf</code> 看算子,手写核走 <code>HIP + Matrix Core(v_mmac)</code>(对标 CUDA + Tensor Core),<code>rocBLAS/hipBLASLt</code> 替 cuBLAS。<b>判优最终以 DCU 判卷为准</b>——训练机上对教师的指标涨了不等于判卷涨。所有方法论在 NVIDIA 上同样成立,只是把工具名换回 <code>nvidia-smi/ncu/cuBLAS</code>。</p></div>
+
+<div class="keypts">
+  <b class="k" style="font-size:17px">一页话总结:气象轻量化上 90 的方法与方向</b>
+  <ol>
+    <li><b>总账</b>:U/V 容易近满(选对轻量骨架 + 部署优化),<b>90 分胜负手全在 W</b>,主要精力和创新押在 W。</li>
+    <li><b>U/V 地基</b>:轻量骨架(MaxViT/SFNO/线性注意力)+ U 形多尺度 + 大 patch/token 合并 + 现代组件(QK-Norm/RMSNorm/SwiGLU)+ fp16/量化 + 显存 tiling + 融合核。</li>
+    <li><b>W 守盘</b>:知识蒸馏(输出/特征/关系/自蒸馏多选),用软标签把学生抬到教师附近。</li>
+    <li><b>W 破天花板(决胜)</b>:真值监督(双损失/多步 rollout/通道区域加权/残差/逆方差),让关键通道反超教师;当心共享头污染,要全监督或拆头。</li>
+    <li><b>W 物理加分</b>:守恒硬约束层(架构级,稳)&gt; 物理特征输入 &gt; 等变/SFNO &gt;&gt; 谱软约束(易失败)。物理搬进架构别当软损失。</li>
+    <li><b>方法论即分</b>:判卷/真值为准、逐通道诊断、小规模先验、A/B 消融。每招都双刃,精细"补与守"才涨净分。</li>
+  </ol>
+</div>
+
+<div class="foot">
+  <p>气象大模型轻量化(先导杯赛题二 · 海光 DCU)· <b>上 90 分的方法与方向</b> —— 战略视角:方向 + 为什么 + 可选方法菜单(汇整业界/文献常用方案,按任务需要组合)。</p>
+</div>
+
+</div>
+</body>
+</html>

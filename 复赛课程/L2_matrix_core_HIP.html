@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L2 · matrix-core HIP 逐代码 · gemm_lib_mmac.hip(手写 v_mmac 矩阵核 GEMM)</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --muted:#3a352f; --faint:#5a5248; --line:#e0d8c8;
+    --paper:#ffffff; --paper2:#f7f5f0; --bg:#faf8f3;
+    --accent:#8a4f2d; --accent-soft:#f3ebe2; --accent-line:#dcc9b5;
+    --blue:#1c5f7a; --blue-soft:#eaf3f7; --blue-line:#bcd9e6;
+    --green:#2e6b3e; --green-soft:#ecf6ee; --green-line:#bfe0c6;
+    --amber:#8a5a10; --amber-soft:#fbf2df; --amber-line:#ecd7a8;
+    --red:#9a2f22; --red-soft:#fbeae6; --red-line:#ecc3b8;
+    --indigo:#473c78; --indigo-soft:#eeebf6; --indigo-line:#cdc5e6;
+    --code-bg:#f7f5f0;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:"Noto Serif SC","Songti SC",Georgia,"Microsoft YaHei",serif;
+        font-size:16.5px; line-height:1.85; -webkit-font-smoothing:antialiased; }
+  .layout{ display:flex; max-width:1280px; margin:0 auto; }
+  nav{ position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
+       width:280px; min-width:280px; padding:28px 16px 60px; background:var(--paper);
+       border-right:1px solid var(--line); font-size:13.5px; font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  nav .navtitle{ font-weight:800; font-size:15px; color:var(--accent); margin-bottom:2px; }
+  nav .navsub{ color:var(--faint); font-size:11.5px; margin-bottom:14px; }
+  nav a{ display:block; color:var(--muted); text-decoration:none; padding:3px 9px; border-radius:7px; border-left:2px solid transparent; }
+  nav a:hover{ background:var(--accent-soft); color:var(--accent); }
+  nav a.chap{ font-weight:700; color:var(--ink); margin-top:12px; }
+  nav a.sub{ padding-left:20px; font-size:12px; color:var(--faint); }
+  main{ flex:1; min-width:0; padding:44px 52px 120px; background:var(--paper); }
+  @media (max-width:1000px){ nav{ display:none; } main{ padding:28px 18px 70px; } body{ font-size:16px; } }
+  header.doc{ border-bottom:2px solid var(--accent-line); padding-bottom:22px; margin-bottom:8px; }
+  header.doc .kicker{ display:inline-block; background:var(--accent); color:#fff; font-size:12px;
+       font-weight:700; letter-spacing:1px; padding:4px 13px; border-radius:20px; font-family:sans-serif; }
+  header.doc h1{ font-size:29px; line-height:1.34; margin:15px 0 10px; letter-spacing:.3px; color:#000; }
+  header.doc .lead{ color:var(--muted); font-size:16.5px; max-width:850px; }
+  header.doc .how{ margin-top:16px; background:var(--paper2); border:1px solid var(--line);
+       border-radius:12px; padding:13px 17px; font-size:14.5px; color:var(--muted); }
+  h2.chap{ font-size:24px; margin:52px 0 6px; padding-top:16px; border-top:1px dashed var(--line); letter-spacing:.3px; color:#000; }
+  h2.chap .cn{ display:inline-block; background:var(--accent); color:#fff; font-size:14px; font-weight:800;
+       min-width:34px; height:34px; line-height:34px; text-align:center; border-radius:9px; margin-right:11px; vertical-align:middle; padding:0 7px; font-family:sans-serif; }
+  .chap-intro{ color:var(--muted); font-size:15.5px; margin:8px 0 4px; }
+  h3{ font-size:18.5px; margin:30px 0 8px; color:#111; }
+  h4{ font-size:16px; margin:20px 0 6px; color:var(--accent); font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  p{ margin:10px 0; } strong{ color:#000; font-weight:700; }
+  em{ font-style:normal; color:var(--amber); font-weight:700; }
+  ul,ol{ margin:9px 0; padding-left:24px; } li{ margin:5px 0; }
+  code{ font-family:"JetBrains Mono","Fira Code",Consolas,monospace; font-size:.85em;
+        background:#eee6d8; color:#6e3f1f; padding:2px 6px; border-radius:5px; }
+  .box{ border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:10px;
+        padding:13px 18px; margin:16px 0; background:var(--paper); }
+  .box.g{ border-left-color:var(--green); background:var(--green-soft); }
+  .box.r{ border-left-color:var(--red); background:var(--red-soft); }
+  .box.a{ border-left-color:var(--amber); background:var(--amber-soft); }
+  .box.b{ border-left-color:var(--blue); background:var(--blue-soft); }
+  .box.ig{ border-left-color:var(--indigo); background:var(--indigo-soft); }
+  .box .h{ font-weight:800; margin-bottom:4px; font-size:15px; color:var(--accent); }
+  .box.g .h{ color:var(--green); } .box.r .h{ color:var(--red); } .box.a .h{ color:var(--amber); }
+  .box.b .h{ color:var(--blue); } .box.ig .h{ color:var(--indigo); }
+  .box p{ margin:6px 0; }
+  .lab{ border:1.5px solid var(--green-line); background:#f0f8f1;
+        border-radius:12px; padding:14px 18px 14px 52px; margin:18px 0; position:relative; }
+  .lab::before{ content:"🛠"; position:absolute; left:16px; top:13px; font-size:21px; }
+  .lab .lbl{ display:block; font-size:12.5px; font-weight:800; color:var(--green); letter-spacing:1px; margin-bottom:4px; font-family:sans-serif; }
+  pre{ background:#f7f5f0; border:1px solid #e0d8c8; border-radius:9px; padding:0; margin:12px 0; overflow:hidden; }
+  pre .bar{ display:flex; gap:6px; align-items:center; padding:7px 12px; background:#efe9df; border-bottom:1px solid #e0d8c8; }
+  pre .bar .dot{ width:10px; height:10px; border-radius:50%; } pre .bar .r{ background:#d96459; } pre .bar .y{ background:#c79a2e; } pre .bar .g{ background:#4fae5e; }
+  pre .bar .nm{ margin-left:6px; color:#5a5248; font-size:11.5px; font-family:"JetBrains Mono",monospace; }
+  pre code{ display:block; background:none; color:#1a1a1a; padding:14px 16px; font-size:12.9px; line-height:1.7; overflow-x:auto; }
+  pre code .c{ color:#555; font-style:italic; } pre code .k{ color:#0033aa; } pre code .s{ color:#006600; } pre code .f{ color:#005a7a; } pre code .n{ color:#6a1b9a; }
+  .diagram{ font-family:"JetBrains Mono",monospace; font-size:12.8px; background:#fbf9f4;
+            border:1px solid var(--line); border-radius:10px; padding:15px 17px; margin:14px 0; line-height:1.85; overflow-x:auto; white-space:pre; color:#1a1a1a; }
+  .hl{ background:#fbeec4; padding:0 4px; border-radius:4px; font-weight:700; }
+  .backtop{ display:inline-block; font-size:12px; color:var(--faint); text-decoration:none; float:right; margin-top:6px; font-family:sans-serif; }
+  table{ border-collapse:collapse; width:100%; margin:14px 0; font-size:14.5px; font-family:-apple-system,"Microsoft YaHei",sans-serif; }
+  th,td{ border:1px solid var(--line); padding:7px 11px; text-align:left; vertical-align:top; }
+  th{ background:var(--paper2); color:var(--accent); font-weight:700; }
+  tr:nth-child(even) td{ background:#fbf8f0; }
+  .src{ font-size:12.5px; color:var(--faint); margin:2px 0 0; font-family:sans-serif; }
+  footer{ margin-top:60px; padding-top:22px; border-top:2px solid var(--accent-line); color:var(--muted); font-size:14px; }
+  @media print{
+    nav{ display:none; } main{ padding:0; } body{ background:#fff; font-size:11.5pt; }
+    .box,.lab,pre,table,.diagram{ break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav>
+  <div class="navtitle">L2 · matrix-core HIP</div>
+  <div class="navsub">gemm_lib_mmac.hip · v_mmac</div>
+  <a href="#intro">导读 · 打开 libgemm.so 的源码</a>
+  <a href="#chain">这一跳的分 · 95.79→96.12</a>
+  <a href="#why">1 · 为什么要手写矩阵核</a>
+  <a href="#vmmac">2 · v_mmac 指令是什么</a>
+  <a href="#frag" class="chap">3 · fragment 布局(核心难点)</a>
+  <a href="#frag-1" class="sub">3.1 什么是 fragment</a>
+  <a href="#frag-2" class="sub">3.2 lane→元素 映射</a>
+  <a href="#frag-3" class="sub">3.3 怎么逆向出来的</a>
+  <a href="#code" class="chap">4 · gemm_lib_mmac.hip 逐段</a>
+  <a href="#code-1" class="sub">4.1 类型 + builtin 声明</a>
+  <a href="#code-2" class="sub">4.2 mmac_gemm 核(LDS-tiled)</a>
+  <a href="#code-3" class="sub">4.3 gemm_init 省 121MiB</a>
+  <a href="#code-4" class="sub">4.4 per-shape tile 选择</a>
+  <a href="#code-5" class="sub">4.5 layernorm/swiglu</a>
+  <a href="#build" class="chap">5 · hipcc 编译成 .so</a>
+  <a href="#call" class="chap">6 · CppRunner 怎么替 rocBLAS</a>
+  <a href="#adapt" class="chap">7 · 怎么改适配</a>
+  <a href="#hands" class="chap">8 · 动手实践</a>
+  <a href="#sum" class="chap">小结</a>
+</nav>
+
+<main>
+
+<header class="doc" id="top">
+  <span class="kicker">复赛备战 · 逐代码讲义 L2 · matrix-core HIP(U 显存大头)</span>
+  <h1>手写矩阵核 GEMM:打开 libgemm.so 的源码<br><span style="font-size:20px;color:var(--muted)">gemm_lib_mmac.hip · gfx936 的 v_mmac 指令 · 弃 rocBLAS 省 121MiB</span></h1>
+  <p class="lead">L1 里 CppRunner 的每个矩阵乘都 ctypes 调 <code>libgemm.so</code> 的 <code>gemm_linear_fp16</code>。这一课把这个 <code>.so</code> 的源码 <code>gemm_lib_mmac.hip</code> 打开,逐段读懂:海光 gfx936 的矩阵核指令 <code>v_mmac</code>(不是 AMD 的 v_mfma)怎么用、它要的 fragment 寄存器布局怎么逆向出来、整段 GEMM 怎么写、怎么 hipcc 编译、怎么不调 rocBLAS 省 121MiB 显存。全程白底深字、可打印。</p>
+  <div class="how"><strong>怎么读:</strong>这一课比 L1 底层。第 3 章(fragment 布局)是难点也是精华——它是"手写矩阵核"和"调库"的分水岭。看不懂可先记结论(那张 lane→元素 映射图),回头再推。代码框对应 <code>最优项目代码/02_matrix_core_HIP/</code>。</p>
+</header>
+
+<h2 class="chap" id="intro" style="border-top:none; margin-top:26px;"><span class="cn">读</span>导读:这一课在干一件"反常识"的事<a href="#top" class="backtop">↑</a></h2>
+<p>常识是:<em>矩阵乘交给 rocBLAS(厂商库)就好,别自己写</em>。L1 的 <code>gemm_lib.hip</code>(rocBLAS 版)就是这么做的。但本项目发现:<span class="hl">rocBLAS 一启动就要加载它的 Tensile kernel 库,白白吃掉约 121MiB 显存</span>——对追求 U(显存)分的我们,这是块大肥肉。于是我们<strong>绕开 rocBLAS,直接用 gfx936 的矩阵核指令手写 GEMM</strong>,既拿到接近库的速度,又省下这 121MiB。这就是 <code>gemm_lib_mmac.hip</code> 的存在意义。</p>
+<div class="box ig">
+  <div class="h">一句话抓住这一课</div>
+  <p>矩阵核(对标 NVIDIA Tensor Core)是 GPU 里"一条指令算一个小矩阵块"的硬件单元。海光 gfx936 的这条指令叫 <code>v_mmac</code>。难点不在"调用指令",而在<strong>它要求 16×16 的矩阵数据按一种古怪的方式分散在 64 个线程的寄存器里(fragment 布局),这个布局官方没文档,得自己逆向</strong>。逆向对了,手写 GEMM 就能 bit-exact 替掉 rocBLAS。</p>
+</div>
+
+<h2 class="chap" id="chain"><span class="cn">分</span>这一跳的分:95.79 → 96.06 → 96.12<a href="#top" class="backtop">↑</a></h2>
+<table>
+  <tr><th>里程碑</th><th>分数</th><th>这一跳</th><th>本课?</th></tr>
+  <tr><td>bo3b 权重</td><td>95.79</td><td>训练侧(L3)</td><td>L3</td></tr>
+  <tr><td><strong>matrix-core</strong></td><td><strong>96.06</strong></td><td><strong>弃 rocBLAS,gemm_init 不加载 Tensile,省 ~121MiB → U +0.32</strong></td><td>✅ 本课</td></tr>
+  <tr><td><strong>per-shape-v3</strong></td><td><strong>96.12</strong></td><td><strong>按 (M,N,K) 形状选最优 tile → V +0.07</strong></td><td>✅ 本课</td></tr>
+</table>
+<p class="src">数字为用户实测。本课让你看懂这 +0.39 分(U+0.32, V+0.07)的代码来源。</p>
+
+<h2 class="chap" id="why"><span class="cn">1</span>为什么要手写矩阵核(而不是调 rocBLAS)<a href="#top" class="backtop">↑</a></h2>
+<p>先看 L1 里 rocBLAS 版 <code>gemm_lib.hip</code> 的 <code>gemm_init</code> 干了啥:它调 <code>rocblas_initialize()</code> 把 Tensile(rocBLAS 的算法库)一次性加载好,这能消掉首样本几秒的懒加载——速度上是对的,但<strong>代价是常驻约 121MiB 显存</strong>。</p>
+<div class="box a">
+  <div class="h">三笔账(为什么这笔交易划算)</div>
+  <ul style="margin:4px 0 0;">
+    <li><strong>显存(U)</strong>:学生单样本峰值才几百 MiB,121MiB 占比可观。省掉它 U 直接 +0.32 分。</li>
+    <li><strong>速度(V)</strong>:手写矩阵核 GEMM 在我们这些形状上能到 rocBLAS 的 ~1.9–2.3×(实测 64×64 tile),不慢,甚至更快;再按形状选 tile 还能 +0.07。</li>
+    <li><strong>精度(W)</strong>:fp16 输入 + fp32 累加,和 rocBLAS 数学等价,实测 bit-exact,W 不变。</li>
+  </ul>
+</div>
+<p>所以结论是:<span class="hl">在"显存就是分"的赛制下,把 rocBLAS 换成自己的矩阵核库是净赚</span>。前提是你能写出一个又对又快的矩阵核 GEMM——这就要先搞懂 <code>v_mmac</code>。</p>
+
+<h2 class="chap" id="vmmac"><span class="cn">2</span>v_mmac 指令是什么<a href="#top" class="backtop">↑</a></h2>
+<p>GPU 里普通的乘加是"一个线程算一个标量乘加"。矩阵核指令则是<strong>一整个 wavefront(海光 64 个线程)协作,一条指令算一块 16×16×16 的矩阵乘加</strong>,等于几千次标量乘加,快一个量级。NVIDIA 叫它 Tensor Core(指令 <code>mma</code>),AMD 叫 MFMA(指令 <code>v_mfma</code>)。</p>
+<div class="box r">
+  <div class="h">★本项目的关键发现:gfx936 用 v_mmac,不是 v_mfma</div>
+  <p>海光虽是 AMD GCN/CDNA 血统,但 gfx936 的矩阵核指令是 <code>v_mmac</code>,<strong>照搬 AMD 的 <code>v_mfma</code> 代码会编译失败或算错</strong>。怎么确认的?用 <code>isa_probe.sh</code> 逐条试哪些指令能编译通过(见 3.3)。HIP 里用 builtin 包装:</p>
+</div>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">v_mmac 的 builtin 形态</span></div><code><span class="c">// 一条指令:c += a × b,16×16×16,fp16 输入 / fp32 累加</span>
+<span class="c">// a,b 是 4 个 fp16(half4),c 是 4 个 fp32(f32x4)——每个线程各持有一小片</span>
+c = <span class="f">__builtin_amdgcn_mmac_f32_16x16x16f16</span>(a, b, c);</code></pre>
+<p>名字拆开看:<code>mmac</code>=矩阵乘加,<code>f32</code>=累加成 fp32,<code>16x16x16</code>=算 C[16×16] += A[16×16]·B[16×16],<code>f16</code>=输入是 fp16。<span class="hl">一个 wave64 算一个 16×16 输出块;K 维每次吃 16,K 大就循环累加 K/16 次</span>。</p>
+
+<h2 class="chap" id="frag"><span class="cn">3</span>fragment 布局:这一课的核心难点<a href="#top" class="backtop">↑</a></h2>
+
+<h3 id="frag-1">3.1 什么是 fragment</h3>
+<p>问题来了:<code>a</code>、<code>b</code> 每个线程只给 4 个 fp16,一个 wave 有 64 线程 = 64×4 = 256 个 fp16,正好装下一个 16×16 矩阵(256 个数)。但<strong>哪个线程的哪个槽,对应矩阵里的哪一行哪一列?</strong>这套"线程↔矩阵元素"的对应关系,就叫 <em>fragment 布局</em>。它由硬件规定,而 gfx936 的 v_mmac 布局<span class="hl">官方没文档</span>——填错一个,结果全错。</p>
+
+<h3 id="frag-2">3.2 lane→元素 映射(实测逆向出的结论)</h3>
+<p>这是本项目逆向出的 bit-exact 布局,记住这张图(<code>gemm_lib_mmac.hip</code> 文件头注释就是它):</p>
+<div class="diagram">每个线程在 wave 里的编号叫 lane(0..63)。把 lane 拆成两个坐标:
+    r = lane % 16     (0..15)  ← 它负责矩阵的第 r 行
+    g = lane / 16     (0..3)   ← 它负责第 g 组、每组 4 个 K
+
+A 的片段(a_frag,4 个 fp16):  a_frag[i] = A[ 行=r ][ 列k=g*4+i ]      i=0..3
+B 的片段(b_frag,4 个 fp16):  b_frag[i] = W[ 行=r ][ 列k=g*4+i ]      (W 行主序 [N,K])
+C 的累加器(acc,4 个 fp32):  acc[i]   = C[ 行=r ][ 列n=g + i*4 ]      i=0..3
+
+直觉:64 lane × 4 槽 = 256 = 16×16。r 选行,g 选"这条 lane 管哪 4 个 K(或哪 4 个 N)"。
+关键陷阱:输入按 (g*4+i) 连续取 K,输出却按 (g+i*4) 跳着写 N —— 输入输出布局不对称!</div>
+<div class="box b">
+  <div class="h">为什么这张图值钱</div>
+  <p>有了它,写 kernel 时每个线程就知道:<strong>该从 HBM/LDS 的哪个地址读自己的 4 个 a、4 个 b,算完该把 4 个结果写回哪 4 个输出位置</strong>。这就是"手写矩阵核"全部的难点所在。布局错 → 结果错;布局对 → 和 rocBLAS 一字不差。</p>
+</div>
+
+<h3 id="frag-3">3.3 这套布局是怎么逆向出来的(方法论)</h3>
+<p>没有文档,就用"探针 + 独热法"自己测。这套探路代码在 <code>02_matrix_core_HIP/mmac_*.hip</code>,讲的是<strong>遇到无文档硬件时怎么自救</strong>:</p>
+<table>
+  <tr><th>步骤</th><th>文件</th><th>干啥</th></tr>
+  <tr><td>① 确认指令存在</td><td><code>isa_probe.sh</code></td><td>用 hipcc 内联汇编逐条试 <code>v_mmac</code>/<code>v_mfma</code>/<code>v_dot*</code> 能不能编过 → 发现 gfx936 吃 v_mmac。</td></tr>
+  <tr><td>② 确认是 16-deep 点积</td><td><code>mmac_verify.hip</code></td><td>喂 A=B=全 1,看 C 每个元素是不是 =16(=Σ 16 个 1×1)。是 → 确认语义。</td></tr>
+  <tr><td>③ 独热探针定位</td><td><code>mmac_layout.hip</code> / <code>mmac_solve.hip</code> / <code>mmac_frag.hip</code></td><td><span class="hl">只让某一个 (lane, 槽) = 1、其余全 0</span>,看 C 的哪个位置变非零 → 反推这个槽对应矩阵哪个元素。逐槽测,拼出完整映射。</td></tr>
+  <tr><td>④ 暴力兜底 / 对拍</td><td><code>mmac_brute.hip</code> / <code>mmac_btile.hip</code></td><td>暴力搜布局组合,与 CPU 参考找 bit-exact 的那一组;B=单位阵专解 B 布局。</td></tr>
+  <tr><td>⑤ 反汇编验证</td><td><code>gcn_decode.py</code> / <code>gcn_scan.py</code></td><td>把 kernel 的机器码 <code>.text</code> 解码,统计真发了哪些指令(确认热循环用的是矩阵核 v_mmac,不是退化成普通 FMA)。</td></tr>
+</table>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">独热法核心思想(mmac_solve.hip 注释)</span></div><code><span class="c">// 每次只让 A 的一个 fragment 槽(lane L, slot i)=1 其余=0,B=全1</span>
+<span class="c">// → C 的非零位置揭示 "a_frag[L][i] 参与了哪个输出行" → 反推 a_frag[L][i]=A[?][?]</span></code></pre>
+<div class="lab"><span class="lbl">动手实践 1 · 跑探针</span>在 DCU 宿主机编译并运行 <code>mmac_verify.hip</code> 看是否打印每元素=16;再跑 <code>bash isa_probe.sh</code> 看哪几条矩阵指令 OK(应看到 v_mmac OK、v_mfma 多半 FAIL)。这一步让你亲眼确认"为什么是 v_mmac"。</div>
+
+<h2 class="chap" id="code"><span class="cn">4</span>gemm_lib_mmac.hip 逐段讲解<a href="#top" class="backtop">↑</a></h2>
+<p class="chap-intro">文件位置:<code>最优项目代码/02_matrix_core_HIP/gemm_lib_mmac.hip</code>(172 行)。它就是编出 <code>libgemm.so</code> 的源码。下面拆 5 段。</p>
+
+<h3 id="code-1">4.1 类型定义 + builtin</h3>
+<p><strong>这段干啥:</strong>定义向量类型 —— <code>half4</code>(4 个 fp16,给 a/b)、<code>f32x4</code>(4 个 fp32,给累加器 c)、<code>half8</code>(一次搬 8 个 fp16,加速访存)。<code>__fp16</code> 是 HIP 的半精度标量类型。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">gemm_lib_mmac.hip · L15–L17</span></div><code><span class="k">typedef</span> __fp16 half4 <span class="k">__attribute__</span>((ext_vector_type(<span class="n">4</span>)));   <span class="c">// a/b 片段:4 个 fp16</span>
+<span class="k">typedef</span> <span class="k">float</span>  f32x4 <span class="k">__attribute__</span>((ext_vector_type(<span class="n">4</span>)));   <span class="c">// c 累加器:4 个 fp32</span>
+<span class="k">typedef</span> <span class="k">struct</span> __align__(<span class="n">16</span>) { __half2 a,b,c,d; } half8;       <span class="c">// 一次搬 8 个 fp16(向量化访存)</span></code></pre>
+
+<h3 id="code-2">4.2 mmac_gemm 核:LDS-tiled 矩阵核 GEMM</h3>
+<p><strong>这段干啥:</strong>真正算 GEMM 的 kernel。模板参数 <code>&lt;WAVES,NB,KB,PAD&gt;</code> 决定 tile 大小(一个 block 算 BM×BN = (WAVES·16)×(NB·16) 的输出)。流程三步:① 把这块要用的 A、W 从 HBM 搬进 LDS(共享内存,用 half8 一次 8 个);② 同步后,逐 16-K 调 <code>v_mmac</code> 累加;③ 把累加器写回 HBM(顺带加 bias)。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">gemm_lib_mmac.hip · L23–L83(节选骨架)</span></div><code><span class="k">template</span>&lt;<span class="k">int</span> WAVES, <span class="k">int</span> NB, <span class="k">int</span> KB, <span class="k">int</span> PAD&gt;
+__global__ <span class="f">__launch_bounds__</span>(WAVES*<span class="n">64</span>)
+<span class="k">void</span> <span class="f">mmac_gemm</span>(<span class="k">const</span> __half* A, <span class="k">const</span> __half* W, <span class="k">const</span> __half* bias,
+               __half* C, <span class="k">int</span> M, <span class="k">int</span> N, <span class="k">int</span> K) {
+  __shared__ __half As[BM*(BK+PAD)], Ws[BN*(BK+PAD)];     <span class="c">// LDS tile(PAD 避 bank 冲突)</span>
+  <span class="k">int</span> wave=tid&gt;&gt;<span class="n">6</span>, lane=tid&amp;<span class="n">63</span>, r=lane&amp;<span class="n">15</span>, g=lane&gt;&gt;<span class="n">4</span>;     <span class="c">// ★就是 3.2 的 r,g</span>
+  f32x4 acc[NB] = {0};                                    <span class="c">// 每 wave 管 NB 个 16×16 输出</span>
+
+  <span class="k">for</span>(<span class="k">int</span> k0=<span class="n">0</span>; k0&lt;K; k0+=BK){            <span class="c">// 沿 K 分块</span>
+    <span class="c">// ① 协作搬 A、W 进 LDS(half8 向量化,边界用标量补)</span>
+    <span class="k">for</span>(<span class="k">int</span> u=tid; u&lt;A_units; u+=TPB) *(half8*)&amp;As[...] = *(half8*)&amp;A[...];
+    __syncthreads();
+    <span class="c">// ② 逐 16-K 调矩阵核(a 取一次,对 NB 个 b 各乘一次)</span>
+    <span class="k">for</span>(<span class="k">int</span> ks=<span class="n">0</span>; ks&lt;KB; ks++){
+      half4 a = *(half4*)&amp;As[(wave*<span class="n">16</span>+r)*LDK + ks*<span class="n">16</span> + g*<span class="n">4</span>];   <span class="c">// a_frag[i]=A[r][g*4+i]</span>
+      <span class="k">for</span>(<span class="k">int</span> j=<span class="n">0</span>; j&lt;NB; j++){
+        half4 b = *(half4*)&amp;Ws[(j*<span class="n">16</span>+r)*LDK + ks*<span class="n">16</span> + g*<span class="n">4</span>];  <span class="c">// b_frag[i]=W[r][g*4+i]</span>
+        acc[j] = <span class="f">__builtin_amdgcn_mmac_f32_16x16x16f16</span>(a, b, acc[j]);  <span class="c">// ★矩阵核</span>
+      }
+    }
+    __syncthreads();
+  }
+  <span class="c">// ③ 写回:acc[j][i] = C[行 wave*16+r][列 j*16 + g + i*4] (+bias)</span>
+  <span class="k">for</span>(<span class="k">int</span> j=<span class="n">0</span>;j&lt;NB;j++) <span class="k">for</span>(<span class="k">int</span> i=<span class="n">0</span>;i&lt;<span class="n">4</span>;i++){
+    <span class="k">int</span> gm=blockM+wave*<span class="n">16</span>+r, gn=blockN+j*<span class="n">16</span>+g+i*<span class="n">4</span>;
+    <span class="k">if</span>(gm&lt;M&amp;&amp;gn&lt;N){ <span class="k">float</span> v=acc[j][i]; <span class="k">if</span>(bias)v+=bias[gn]; C[gm*N+gn]=v; }
+  }
+}</code></pre>
+<div class="box g">
+  <div class="h">把 4.2 和 3.2 对上号(关键)</div>
+  <p>读 a 的地址 <code>As[(wave*16+r)*LDK + ks*16 + g*4]</code> 取连续 4 个 = <code>a_frag[i]=A[r][g*4+i]</code>;写回 <code>gn=...+g+i*4</code> = <code>acc[i]=C[r][n=g+i*4]</code>。<span class="hl">代码里每个下标都来自 3.2 那张逆向图</span>。这就是"逆向布局 → 落到代码"的闭环。</p>
+</div>
+
+<h3 id="code-3">4.3 gemm_init:不调 rocblas_initialize(省 121MiB 的那一行)</h3>
+<p><strong>这段干啥:</strong>这是整个 U +0.32 分的"那一行"——或者说"故意不写的那一行"。rocBLAS 版会在这里 <code>rocblas_initialize()</code>;matrix-core 版<span class="hl">绝不调它,因此 Tensile 库不被加载,121MiB 省下</span>。它只用极小张量把自己的模板 kernel 预热一遍(消首样本懒加载),保持 V 的稳态。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">gemm_lib_mmac.hip · L87–L96</span></div><code><span class="k">extern</span> <span class="s">"C"</span> <span class="k">void</span> <span class="f">gemm_init</span>() {
+  <span class="c">// ★关键:不调 rocblas_initialize → 不加载 Tensile 库 → 省 121MiB</span>
+  <span class="c">// 只用极小张量触发各 mmac 模板 kernel 懒加载(移出评测计时区)</span>
+  __half *a,*w,*c; hipMalloc(&amp;a,<span class="n">16</span>*<span class="n">16</span>*<span class="n">2</span>); hipMalloc(&amp;w,<span class="n">16</span>*<span class="n">16</span>*<span class="n">2</span>); hipMalloc(&amp;c,<span class="n">16</span>*<span class="n">16</span>*<span class="n">2</span>);
+  <span class="f">_gemm_warm</span>(a,w,c);            <span class="c">// 预热所有会用到的 tile 模板实例</span>
+  hipDeviceSynchronize();
+  hipFree(a); hipFree(w); hipFree(c);
+}</code></pre>
+<p>CppRunner 的 <code>init()</code>(L1 见过)调的就是这个 <code>gemm_init</code>。<span class="hl">换库无非是把 <code>gemm_lib.hip</code> 编的 .so 换成 <code>gemm_lib_mmac.hip</code> 编的 .so</span>,函数名(ABI)完全一样,Python 端一行不改。</p>
+
+<h3 id="code-4">4.4 gemm_linear_fp16:per-shape tile 选择(96.06→96.12 的 +0.07)</h3>
+<p><strong>这段干啥:</strong>对外暴露的入口。不同形状的 GEMM 用不同 tile 最快——这就是 "per-shape-v3"。<code>linear</code>(L1 的封装)最终调到这里。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">gemm_lib_mmac.hip · L102–L124</span></div><code><span class="k">extern</span> <span class="s">"C"</span> <span class="k">void</span> <span class="f">gemm_linear_fp16</span>(<span class="k">const</span> <span class="k">void</span>* x, <span class="k">const</span> <span class="k">void</span>* W, <span class="k">const</span> <span class="k">void</span>* bias,
+                                 <span class="k">void</span>* out, <span class="k">int</span> M, <span class="k">int</span> N, <span class="k">int</span> K, <span class="k">void</span>* stream) {
+  <span class="c">// ★按形状选最优 tile(在真实 chunked 形状上实测 sweep 出来的)</span>
+  <span class="k">if</span> (M &lt;= <span class="n">512</span>)        LAUNCH(<span class="n">2</span>,<span class="n">2</span>,<span class="n">2</span>,<span class="n">8</span>);   <span class="c">// 极小 M(recovery2d chunk):32×32,1.05×</span>
+  <span class="k">else if</span> (N &gt;= <span class="n">1536</span>)  LAUNCH(<span class="n">8</span>,<span class="n">16</span>,<span class="n">1</span>,<span class="n">8</span>); <span class="c">// 大 N(recovery3d chunk):128×256,2.10×</span>
+  <span class="k">else</span>                LAUNCH(<span class="n">4</span>,<span class="n">4</span>,<span class="n">2</span>,<span class="n">8</span>);   <span class="c">// 通用(qkv/mlp/embed):64×64,~1.9–2.3×</span>
+}</code></pre>
+<div class="box b"><div class="h">迁移价值</div><p>换方向后形状会变。<span class="hl">加一档很简单:测出新形状(打印 M,N,K),给它配个 tile,在这里加个 <code>if</code></span>。这就是 per-shape 调优——不改算法,只换"这个形状用哪号 tile"。</p></div>
+
+<h3 id="code-5">4.5 layernorm / swiglu(沿用,顺带提供)</h3>
+<p>同一个 <code>.so</code> 还提供 <code>layernorm_fp16</code> 和 <code>swiglu_fp16</code>(普通 elementwise/归约 kernel,非矩阵核),因为 CppRunner 也要调它们。它们用 wave64 内 <code>__shfl_down</code> 归约(注意是 64 宽,不是 NVIDIA 的 32)。这部分和 rocBLAS 版完全一致,不是本课重点。</p>
+
+<h2 class="chap" id="build"><span class="cn">5</span>hipcc 编译成 libgemm.so<a href="#top" class="backtop">↑</a></h2>
+<p><strong>怎么调用:</strong>一行 hipcc 把源码编成动态库。<code>--offload-arch=gfx936</code> 必须有(指定海光这代架构),<code>-shared -fPIC</code> 出 .so,<code>-O3</code> 开优化。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash · DCU 宿主机(有 /opt/dtk*/bin/hipcc)</span></div><code><span class="c"># 编成库</span>
+hipcc -O3 -shared -fPIC --offload-arch=gfx936 gemm_lib_mmac.hip -o libgemm.so
+<span class="c"># 放到推理目录(CppRunner 自动从同目录加载)</span>
+cp libgemm.so /public/home/xdzs2026_c296/submit_pw/libgemm.so
+<span class="c"># 单独编某个探针/迭代版跑 self-test:</span>
+hipcc -O3 --offload-arch=gfx936 gemm_mmac.hip -o t &amp;&amp; ./t</code></pre>
+<div class="box r"><div class="h">常见坑</div><p>① 忘了 <code>--offload-arch=gfx936</code> → 编出来跑不动或算错。② 在登录节点编(没 DCU)→ 要 ssh 到计算节点宿主机(见 L… 环境课)。③ DTK 版本换了 → builtin 名可能变,重新 <code>isa_probe.sh</code> 确认。</p></div>
+
+<h2 class="chap" id="call"><span class="cn">6</span>CppRunner 怎么调用它替 rocBLAS<a href="#top" class="backtop">↑</a></h2>
+<p>回到 L1:CppRunner 的 <code>linear()</code> 用 ctypes 调 <code>_LIBG.gemm_linear_fp16</code>,<code>init()</code> 调 <code>_LIBG.gemm_init</code>。<span class="hl">这两个函数名在 rocBLAS 版和 matrix-core 版里完全一样(同 ABI)</span>,所以"换库"= 换那个 <code>libgemm.so</code> 文件,Python 端零改动。这就是 drop-in 替换。</p>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">maxvit3d_cpp.py · linear() 怎么连到本课的 kernel</span></div><code><span class="c"># L1 见过:这一行 ctypes 调的就是 gemm_lib_mmac.hip 里的 extern "C" gemm_linear_fp16</span>
+_LIBG.gemm_linear_fp16(c_void_p(x2.data_ptr()), c_void_p(W.data_ptr()),
+                       c_void_p(bp), c_void_p(out.data_ptr()), M, N, K, _stream())</code></pre>
+<pre><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="nm">bash · 验证换库后分数</span></div><code><span class="c"># 用 matrix-core 库跑评测口径打分(score15_dcu.py 第 2 参传 .so,见 L4)</span>
+python score15_dcu.py data/checkpoints/student.pth libgemm.so</code></pre>
+
+<h2 class="chap" id="adapt"><span class="cn">7</span>怎么改适配新方向<a href="#top" class="backtop">↑</a></h2>
+<table>
+  <tr><th>情况</th><th>改哪里</th></tr>
+  <tr><td>新模型出现新 GEMM 形状,慢</td><td>打印 M,N,K → 在 <code>gemm_linear_fp16</code> 的 if 链加一档,配合适 tile(参考现有三档)。</td></tr>
+  <tr><td>想再省权重显存(U)</td><td>用 <code>gemm_wint8.hip</code>:权重存 INT8 + per-channel scale,LDS 里反量化再走 v_mmac,近无损再省 ~97MiB。</td></tr>
+  <tr><td>换了 DTK / 新一代 DCU</td><td>先 <code>isa_probe.sh</code> 确认矩阵核指令名,再用探针组复验 fragment 布局(布局可能随架构变)。</td></tr>
+  <tr><td>不确定手写有没有用上矩阵核</td><td><code>gcn_decode.py</code> 反汇编 .text,看热循环有没有 v_mmac(没有就是退化成普通 FMA 了)。</td></tr>
+  <tr><td>怕手写库在评测环境崩</td><td>L1 的优雅降级会回退 torch;也可保留 rocBLAS 版 .so 作 plan B。</td></tr>
+</table>
+
+<h2 class="chap" id="hands"><span class="cn">8</span>动手实践清单<a href="#top" class="backtop">↑</a></h2>
+<div class="lab"><span class="lbl">动手实践 2 · 编库 + 对拍</span>编 <code>gemm_lib_mmac.hip</code> → libgemm.so;再编 <code>gemm_bench.hip</code>(手写 vs rocBLAS 对拍),确认 max abs diff ≈ 0(bit-exact)且手写不慢于库。</div>
+<div class="lab"><span class="lbl">动手实践 3 · 量两种库的显存</span>分别用 rocBLAS 版 <code>gemm_lib.hip</code> 和 matrix-core 版 <code>gemm_lib_mmac.hip</code> 编 .so,各跑一次 <code>inference.py</code>,用 <code>hy-smi</code> 比峰值显存,亲眼看到那 ~121MiB 差距(= U +0.32 的来源)。</div>
+<div class="lab"><span class="lbl">动手实践 4 · 改 fragment 故意错一位</span>把 4.2 里读 a 的 <code>g*4</code> 改成 <code>g*2</code>,重编跑 self-test,看结果如何崩 —— 体会 fragment 布局错一位就全错,加深"布局即一切"的印象。改回来。</div>
+
+<h2 class="chap" id="sum"><span class="cn">收</span>小结:这一课你掌握了什么<a href="#top" class="backtop">↑</a></h2>
+<div class="box g">
+  <ul style="margin:4px 0 0;">
+    <li><strong>为什么手写</strong>:rocBLAS 的 Tensile 常驻 ~121MiB,弃之换矩阵核 = U +0.32(且不慢、bit-exact)。</li>
+    <li><strong>v_mmac</strong>:gfx936 的矩阵核指令(≠ AMD v_mfma),一条算 16×16×16 fp16 矩阵乘加,builtin <code>__builtin_amdgcn_mmac_f32_16x16x16f16</code>。</li>
+    <li><strong>fragment 布局</strong>:lane→元素 的对应(r=lane%16 选行,g=lane/16 选 K/N 组),无文档,用独热探针 + isa_probe + 反汇编逆向出来,落进 kernel 每个下标。</li>
+    <li><strong>gemm_lib_mmac.hip</strong>:LDS-tiled mmac_gemm 核 + gemm_init 不调 rocblas(省 121MiB)+ per-shape tile(V+0.07)+ 同 ABI drop-in 替 rocBLAS。</li>
+    <li><strong>方法论迁移</strong>:遇到无文档硬件,用"独热探针 + 反汇编对拍"自己逆向;换形状只加 if 选 tile;怕崩留降级/plan B。</li>
+  </ul>
+  <p style="margin-top:8px;">下一课 <strong>L3 · 训练</strong>:打开 <code>distill_truth.py</code>,看 bo3b 权重怎么训出来的——教师蒸馏 + 温度/低层真值混合监督、选择性真值、full-temp、谱损失、按真值选优,以及 lr 6e-5 / resume 怎么用。</p>
+</div>
+
+<footer>
+  <p>复赛备战 · 逐代码讲义 L2 · matrix-core HIP · 配套代码见 <code>复赛备战课程/最优项目代码/02_matrix_core_HIP/</code></p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>
