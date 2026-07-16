@@ -153,6 +153,18 @@ class RelPosBias3D(nn.Module):
 
 _USE_SDPA = False  # 置 True 用融合注意力(SDPA, 不物化 N×N, 省显存); maxvit3d_student._USE_SDPA = True
 
+# ★推理期注意力分块数(显存优化,纯 PyTorch,无需编译):
+#   注意力分数矩阵 (Bn, heads, N, N) 中 Bn=窗口数,各窗口 softmax 相互独立,
+#   按 Bn 维分成 _ATTN_CHUNKS 块顺序计算,与全量在数学上完全等价,
+#   但峰值显存从整块降到 1/_ATTN_CHUNKS。1=关闭(全量);推荐 8。
+import os as _os
+_ATTN_CHUNKS = int(_os.environ.get("ATTN_CHUNKS", "8"))
+
+
+def set_attn_chunks(n: int):
+    global _ATTN_CHUNKS
+    _ATTN_CHUNKS = max(1, int(n))
+
 
 def set_sdpa(v: bool):
     global _USE_SDPA
@@ -185,6 +197,21 @@ class Attention3D(nn.Module):
             # 融合注意力:不物化 (Bn,heads,N,N),省显存;τ 折进 q,bias 当 additive mask,内置 scale=1
             out = F.scaled_dot_product_attention(q * scale, k, v, attn_mask=self.bias(), scale=1.0)
             out = out.transpose(1, 2).reshape(Bn, N, C)
+        elif not self.training and _ATTN_CHUNKS > 1 and Bn > _ATTN_CHUNKS:
+            # ★显存优化(推理期):按窗口(Bn)维分块计算注意力。
+            #   各窗口的 softmax 本就相互独立,分块与全量在数学上完全等价(逐行 softmax 不跨窗口),
+            #   但分数矩阵峰值从 (Bn,heads,N,N) 降到 (chunk,heads,N,N),显存峰值降约 _ATTN_CHUNKS 倍。
+            #   纯 PyTorch 实现,无需任何编译/自定义算子;与全量前向数值一致(仅浮点累加顺序不变)。
+            bias = self.bias()
+            step = (Bn + _ATTN_CHUNKS - 1) // _ATTN_CHUNKS
+            out = torch.empty(Bn, N, C, dtype=x.dtype, device=x.device)
+            for i in range(0, Bn, step):
+                j = min(i + step, Bn)
+                a = (q[i:j] @ k[i:j].transpose(-2, -1)) * scale       # (chunk,heads,N,N)
+                a = a + bias
+                a = a.softmax(dim=-1)
+                out[i:j] = (a @ v[i:j]).transpose(1, 2).reshape(j - i, N, C)
+                del a
         else:
             attn = (q @ k.transpose(-2, -1)) * scale           # Bn,heads,N,N
             attn = attn + self.bias()
@@ -339,10 +366,9 @@ class MaxVit3DStudent(nn.Module):
     def __init__(self, img_size=(721, 1440), patch_size=(2, 4, 4),
                  embed_dim=192, depths=(1, 3, 1), num_heads=(6, 12, 6),
                  window_size=(2, 6, 12), mlp_ratio=4.0, drop_path=0.1,
-                 use_checkpoint=False, global_mode="grid", residual=False):
+                 use_checkpoint=False, global_mode="grid"):
         super().__init__()
         self.use_checkpoint = use_checkpoint
-        self.residual = residual  # 残差预测:out=x_in+NN(网络学t→t+6h增量)
         self.global_mode = global_mode  # "grid"=定步稀疏全局 / "spectral"=FNO频域全局 / "fpa"=原型自适应全局
         # 复用官方 stem/head(embed_dim 可配 → 缩窄省显存/参数;I/O 与教师严格一致)。
         # 两套 onescience API 自适配:SCNet=统一 PanguEmbedding;abc66=PanguEmbedding2D/3D 分版。
@@ -524,9 +550,6 @@ class MaxVit3DStudent(nn.Module):
         if not mem_opt:
             return self._forward_plain(x)
         tile = getattr(self, "mem_tile", 6)
-        if self.residual:
-            x_in_s = x[:, :4].clone()
-            x_in_u = x[:, 7:, :, :].reshape(x.shape[0], 5, 13, x.shape[2], x.shape[3]).clone()
         surface = x[:, :7, :, :]
         upper = x[:, 7:, :, :].reshape(x.shape[0], 5, 13, x.shape[2], x.shape[3])
         surface = self._embed_tiled(self.patchembed2d, surface, tile)
@@ -550,15 +573,9 @@ class MaxVit3DStudent(nn.Module):
         del output
         out_surface = self._recovery_tiled(self.patchrecovery2d, rin2, tile); del rin2
         out_upper = self._recovery_tiled(self.patchrecovery3d, rin3, tile); del rin3
-        if self.residual:
-            out_surface = out_surface + x_in_s
-            out_upper = out_upper + x_in_u
         return out_surface, out_upper
 
     def _forward_plain(self, x):
-        if self.residual:  # 保存输入物理通道(归一化空间),用于残差连接
-            x_in_s = x[:, :4]
-            x_in_u = x[:, 7:, :, :].reshape(x.shape[0], 5, 13, x.shape[2], x.shape[3])
         surface = x[:, :7, :, :]
         upper = x[:, 7:, :, :].reshape(x.shape[0], 5, 13, x.shape[2], x.shape[3])
         surface = self.patchembed2d(surface)                       # B,192,181,360
@@ -578,9 +595,6 @@ class MaxVit3DStudent(nn.Module):
         output = output.transpose(1, 2).reshape(B, -1, Pl, Lat, Lon)
         out_surface = self.patchrecovery2d(output[:, :, 0, :, :])  # B,4,721,1440
         out_upper = self.patchrecovery3d(output[:, :, 1:, :, :])   # B,5,13,721,1440
-        if self.residual:  # 残差预测:网络只学t→t+6h增量(数据残差比0.07-0.12极小→大幅减负→整体提精度)
-            out_surface = out_surface + x_in_s
-            out_upper = out_upper + x_in_u
         return out_surface, out_upper
 
 

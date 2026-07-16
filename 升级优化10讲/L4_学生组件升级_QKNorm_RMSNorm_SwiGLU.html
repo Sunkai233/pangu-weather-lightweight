@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>L4 学生组件升级:QK-Norm / RMSNorm / SwiGLU</title>
+<title>L4 模型与训练优化：Pangu → 5.19M 学生</title>
 <style>
   :root{
     --ink:#1e232a; --ink2:#3b444e; --mut:#6b7480; --line:#e7e9ec;
@@ -72,21 +72,27 @@
   .ref .rb{padding:12px 16px}
   .ref .row{margin:7px 0;font-size:14.5px}
   .ref .lab{display:inline-block;min-width:78px;font-weight:700;color:var(--accent2);font-size:12.5px;vertical-align:top}
+  .cmp{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px;line-height:1.62}
+  .cmp th,.cmp td{border:1px solid #d9dee4;padding:10px 12px;vertical-align:top;text-align:left}
+  .cmp th{background:#eef4f8;color:#194f78;font-weight:750}
+  .cmp td:first-child{font-weight:700;width:16%;color:#263746}
+  .cmp .yes{color:var(--good);font-weight:700}.cmp .no{color:var(--w);font-weight:700}
+  .mini{font-size:13.5px;color:var(--mut)}
 </style>
 </head>
 <body>
 <header class="hero">
   <div class="hero-inner">
     <div class="course">先导杯 · 气象大模型轻量化 · 各模块升级优化 10 讲</div>
-    <h1><span class="lnum">L4</span>学生组件升级:QK-Norm / RMSNorm / SwiGLU</h1>
-    <p class="sub">L3 把骨架搭好了(U 形 + block/grid)。这一课钻进每个 block 内部,<b>逐个换零件</b>——注意力的缩放、归一化、FFN、残差分支。
-      每个都讲 <em>baseline 有什么问题 → 怎么升级 → 收益是什么</em>。这些零件不涨某一维的分,却是 5.19M 学生能<b>训得稳、参不涨、可更深更窄</b>去逼近教师的地基。</p>
+    <h1><span class="lnum">L4</span>模型与训练优化：Pangu → 5.19M 学生</h1>
+    <p class="sub">这一讲不只拆 QK-Norm、RMSNorm、SwiGLU，而是把<b>最终模型真正启用的结构和训练优化一次讲全</b>：
+      官方 Pangu 为什么强但不适合轻量部署，学生在哪些地方缩、哪些能力必须保留；为什么二维矩阵用 Muon、卷积/归一化/偏置仍用 AdamW；以及两阶段蒸馏与温度真值校准如何配合。</p>
     <div class="pills">
-      <span class="pill"><b>QK-Norm</b> 余弦+可学习温度</span>
-      <span class="pill"><b>RMSNorm</b> 替 LayerNorm</span>
-      <span class="pill"><b>SwiGLU</b> 门控 FFN</span>
-      <span class="pill"><b>LayerScale+DropPath</b></span>
-      <span class="pill">对照官方讲义 04A–04E</span>
+      <span class="pill"><b>Pangu 对照</b> 64.22M → 5.19M</span>
+      <span class="pill"><b>网络</b> patch/U形/block+grid</span>
+      <span class="pill"><b>组件</b> QK-Norm/RMSNorm/SwiGLU</span>
+      <span class="pill"><b>优化器</b> Muon + AdamW</span>
+      <span class="pill"><b>训练</b> 蒸馏 → 真值校准</span>
     </div>
   </div>
 </header>
@@ -96,7 +102,10 @@
 <div class="band">
   <b class="k">本课地图</b>
   <div class="toc">
-    <a href="#s1">① 为什么要逐个换零件</a><br>
+    <a href="#overview">⓪ Pangu 与学生：完整优化对照表</a><br>
+    <a href="#optim">A. 为什么是 Muon + AdamW，而不是单一优化器</a><br>
+    <a href="#train">B. 两阶段训练策略与最终启用项</a><br>
+    <a href="#s1">① 为什么还要逐个换 block 内部零件</a><br>
     <a href="#s2">② QK-Norm:余弦注意力 + 可学习温度</a><br>
     <a href="#s3">③ RelPosBias3D:3D 相对位置偏置</a><br>
     <a href="#s4">④ RMSNorm:换掉 LayerNorm</a><br>
@@ -106,6 +115,66 @@
     <a href="#s8">⑧ HIP/DCU 视角 + 本课要点</a>
   </div>
 </div>
+
+<!-- 总览：网络和训练优化 -->
+<h2 id="overview"><span class="n">0</span>先看全局：官方 Pangu 与最终学生逐项对比</h2>
+<p class="lead">轻量化不是把教师每一层按比例缩小，而是先判断哪些能力是气象预测的<b>不可替代项</b>，再重写昂贵的实现方式。
+官方 Pangu 的价值在于三维气象表示、局部空间建模、跨区域信息交换和 U 形多尺度；学生保留这四件事，但把 token 数、宽度、全局通信与训练方法换成更适合 5M 级模型的版本。</p>
+
+<table class="cmp">
+  <thead><tr><th>比较维度</th><th>官方 Pangu 教师</th><th>最终 MaxViT-3D 学生</th><th>为什么这样优化</th></tr></thead>
+  <tbody>
+    <tr><td>角色与规模</td><td>64.22M 参数、约 1.8GB 全量权重；作为官方基准教师，全程冻结。</td><td>5.19M 参数、FP16 权重约 10.46MB；负责最终部署。</td><td>先用教师提供高质量函数监督，再把部署成本转移到小学生；不是从零替换教师知识。</td></tr>
+    <tr><td>输入输出</td><td>72 通道输入；输出 4 个地表量和 5×13 个高空量。</td><td>形状、变量顺序和归一化完全一致，直接输出完整 t+6h 气象场。</td><td>保留官方数据管线与评测语义；<b>不做残差输出</b>，避免改变预测目标。</td></tr>
+    <tr><td>Patch / token</td><td>细粒度地表 4×4、高空 2×4×4 patch，token 多、细节强但计算重。</td><td><code>patch=(2,16,16)</code>，把水平 token 大幅压缩。</td><td>注意力和激活成本首先由 token 数决定；大 patch 是参数几乎不增加的首要降算手段。</td></tr>
+    <tr><td>宽度与层数</td><td>典型通道宽度 192，Earth-Specific Transformer 采用较重的 2-6-6-2 U 形层级。</td><td><code>embed=96</code>，<code>depths=(2,4,2)</code>，头数 <code>(6,12,6)</code>；每个 depth 含 local+global 两层。</td><td>宽度减半会近似按平方减少 Linear 参数/FLOPs，再用成对局部—全局层补回表达和感受野。</td></tr>
+    <tr><td>多尺度</td><td>U 形编码—中层—解码，兼顾全局与高分辨率恢复。</td><td>保留 U 形、下采样/上采样与 skip；把最重计算放在低分辨率中层。</td><td>这是教师中应保留的能力：高分辨率细节不能只靠单尺度主干重建。</td></tr>
+    <tr><td>空间注意力</td><td>Earth-specific 3D 窗口与移位窗口，位置/掩码设计精细但调度和 mask 更重。</td><td>连续 <b>block</b> 局部窗口与等距 <b>grid</b> 全局稀疏注意力交替。</td><td>局部分支守住邻域连续性，grid 用规则稠密小 GEMM 实现远程通信，比复杂移位与大 mask 更适合国产卡。</td></tr>
+    <tr><td>相似度与位置</td><td>标准缩放点积并配 Earth-specific 位置偏置。</td><td>Q/K L2 归一化后的余弦注意力、逐头可学习温度、轻量 3D 相对位置偏置。</td><td>小模型更怕 logit 尺度漂移；QK-Norm 把相似度限制在 [−1,1]，温度再学习每个头的锐度。</td></tr>
+    <tr><td>Norm / FFN</td><td>较传统的 LayerNorm 与普通 MLP/GELU 路径。</td><td>Pre-RMSNorm + SwiGLU，<code>mlp_ratio=2.0</code>。</td><td>RMSNorm 减少中心化和偏置开销；SwiGLU 用门控提高单位参数表达，较小 ratio 控制总参数。</td></tr>
+    <tr><td>残差稳定性</td><td>依赖大模型容量与成熟训练配置。</td><td>LayerScale（初值 1e-5）+ 线性递增 DropPath。</td><td>让窄学生开局接近恒等映射，再逐步放大新分支；随机深度抑制小数据过拟合。</td></tr>
+    <tr><td>训练目标</td><td>官方已训练完成，本项目不更新教师参数。</td><td>先 69 通道纯教师蒸馏，再仅对 14 个温度通道混入官方 ERA5 真值。</td><td>第一阶段先继承完整函数，第二阶段只校准最有把握的温度偏差，避免全通道真值同时抢梯度。</td></tr>
+    <tr><td>部署权重</td><td>全量教师仅用于训练监督与基线。</td><td>最终以 FP16 保存；不做 INT8、权重重排或外部查表。</td><td>与半精度推理路径一致，压缩存储且保持实现简单、可审计。</td></tr>
+  </tbody>
+</table>
+
+<div class="callout good"><div class="t">这张表的核心不是“学生处处比教师高级”</div>
+<p style="margin:5px 0">Pangu 提供的是强预测函数和正确的气象归纳偏置；学生优化的是<b>同一种能力的成本表达</b>。该保留的——3D 表示、局部结构、全局通信、多尺度恢复——全部保留；昂贵的 token、宽度、移位调度和传统 block 零件才被替换。</p></div>
+
+<h2 id="optim"><span class="n">A</span>优化器对比：为什么用 Muon + AdamW 分组</h2>
+<p class="lead">“网络结构变小”只解决容量和算力问题；要让 5.19M 学生真的逼近教师，还要解决窄矩阵更新容易被少数奇异方向主导的问题。最终训练没有用一个优化器包打天下，而是按参数的数学形状分工。</p>
+
+<table class="cmp">
+  <thead><tr><th>对象</th><th>选择</th><th>最终配置</th><th>数学/工程原因</th></tr></thead>
+  <tbody>
+    <tr><td>教师 Pangu</td><td>不设优化器</td><td><code>eval()</code>、关闭梯度，仅前向生成监督目标。</td><td>教师是组委会提供的固定基准；更新教师既无必要，也会破坏可复现的监督参照。</td></tr>
+    <tr><td>Attention/MLP 的二维权重矩阵</td><td><b>Muon</b></td><td><code>lr=0.02</code>、<code>momentum=0.99</code>、Nesterov、5 次 Newton–Schulz。</td><td>先对动量梯度矩阵做近似极分解：<span class="fx">G = UΣVᵀ → Ŝ ≈ UVᵀ</span>，压平奇异值尺度，使不同输入/输出方向获得更均衡更新；特别适合 Transformer 的二维 Linear 权重。</td></tr>
+    <tr><td>Patch embedding/recovery、卷积、Norm、bias 与其他非二维参数</td><td><b>AdamW</b></td><td>第一阶段 <code>lr=6e-4</code>、<code>betas=(0.9,0.95)</code>、<code>wd=0.05</code>；第二阶段 lr 降为 <code>6e-5</code>。</td><td>这些参数没有自然的矩阵正交化语义；AdamW 的逐元素二阶矩估计和解耦权重衰减更稳。</td></tr>
+    <tr><td>全部参数的共同稳定器</td><td>调度 + EMA + 裁剪</td><td>warmup 后 cosine；EMA <code>0.999</code>；全局梯度范数裁剪 <code>1.0</code>；BF16 autocast。</td><td>warmup 防止大 Muon 学习率早期过冲，cosine 负责后期收敛；EMA 降低小批量噪声；裁剪处理极端气象样本；BF16 扩大指数范围。</td></tr>
+  </tbody>
+</table>
+
+<div class="math"><div class="hd">Muon 在这里解决的数学问题</div><div class="bd">
+  <div class="eq">Mₜ = μMₜ₋₁ + (1−μ)Gₜ，　Ûₜ ≈ Mₜ(MₜᵀMₜ)<sup>−1/2</sup>，　Wₜ₊₁ = Wₜ − ηÛₜ</div>
+  <p>AdamW 主要做逐元素尺度自适应；Muon 对整张二维梯度矩阵做近似正交化。二者不是谁全面替代谁，而是分别匹配“矩阵参数”和“普通参数”。代码中的 Newton–Schulz 迭代以 BF16 执行，避免显式 SVD，训练开销可控。</p>
+</div></div>
+
+<h2 id="train"><span class="n">B</span>训练策略：先继承教师，再用真值定向校准</h2>
+<table class="cmp">
+  <thead><tr><th>阶段/策略</th><th>最终实际配置</th><th>解决的问题</th></tr></thead>
+  <tbody>
+    <tr><td>阶段 1：纯教师蒸馏</td><td>1980–1996 年候选样本训练，1997 年验证；80 epoch，<code>max_cache=300</code>；69 通道官方加权 L1；BF16；经度 roll。</td><td>先把教师的完整输出函数搬进学生，避免一开始就让真值与教师两个目标互相拉扯。</td></tr>
+    <tr><td>一次性教师目标缓存</td><td>教师冻结，在训练前把监督输出保存为 FP16 内存缓存，之后重复使用。</td><td>教师前向远比学生昂贵；缓存把每个样本每轮一次教师计算变成每个样本总共一次，同时解释了为什么训练机需要较大主机内存。</td></tr>
+    <tr><td>阶段 2：温度真值续训</td><td>从阶段 1 权重 <code>strict=True</code> 续训；1980 年连续 6h pair，35 epoch 计划，最终采用 epoch 21 快照；<code>truth_alpha=0.5</code>。</td><td>续训而非重训，保住已学到的 69 通道整体能力；用较小 lr 做定向校准。</td></tr>
+    <tr><td>14 通道混合监督</td><td>2m 温度 + 13 个气压层 temperature：<code>0.5×教师 + 0.5×ERA5 真值</code>；其余 55 通道仍为纯教师。</td><td>突破纯蒸馏只能逼近教师的上限，同时把真值影响限制在验证过的温度子空间，避免风、湿度等通道退化。</td></tr>
+    <tr><td>变量与纬度权重</td><td>沿用官方地表/高空/层级权重，再乘归一化 <code>cos(latitude)</code>。</td><td>评分变量尺度差异很大；纬经网格在高纬过采样，面积权重使损失更接近真实球面面积积分。</td></tr>
+    <tr><td>数据与增强</td><td>文件名时间差必须严格等于 6h；固定随机种子切分；输入、教师目标和真值同步经度循环平移。</td><td>机械排除错配标签；经度是周期边界，同步 roll 增强不会破坏物理关系。</td></tr>
+    <tr><td>验证与保存</td><td>同时看对教师的 <code>val_match</code> 与对 t+6h ERA5 的温度 RMSE；验证/保存使用 EMA 权重。</td><td>只看蒸馏误差会错过真值改进，只看温度又可能损害其他通道；双口径监控才能判定是否真的进步。</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn"><div class="t">最终配置边界：探索过，不等于最终启用</div>
+<p style="margin:5px 0">残差预测、DTP 动态通道权重、物理特征头、频谱损失、全 15 指标真值监督、额外风/湿真值、区域重加权、冻结 backbone 均为关闭状态，不计入最终模型优化。正式启动脚本会拒绝误开启这些开关。</p></div>
 
 <!-- 1 -->
 <h2 id="s1"><span class="n">1</span>为什么要逐个换零件</h2>
@@ -299,8 +368,8 @@ x = x + self.drop_path(self.ls2 * self.mlp(self.norm2(x)))  <span class="c"># FF
 </div>
 
 <div class="foot">
-  <p>先导杯 · 气象大模型轻量化 · 各模块升级优化 10 讲 —— <b>L4 学生组件升级:QK-Norm / RMSNorm / SwiGLU</b></p>
-  <p><b>下一课 L5《蒸馏主路径:知识蒸馏 + 双损失 DTP》</b>:骨架和零件都齐了,开始训练——为什么用蒸馏、DTP 双损失(α·教师 + (1−α)·真值)怎么设计、官方加权 L1、教师冻结、以及 AdamW/EMA/bf16/梯度检查点这套训练框架。这也是攻 W 的第一步。</p>
+  <p>先导杯 · 气象大模型轻量化 · 各模块升级优化 10 讲 —— <b>L4 模型与训练优化：Pangu → 5.19M 学生</b></p>
+  <p><b>下一课 L5《蒸馏主路径:知识蒸馏与损失设计》</b>:本课已经说明最终网络、优化器和两阶段训练全貌；L5 再把教师监督、真值监督、官方加权 L1 及实验分支逐个展开，重点区分“最终启用”和“探索后关闭”。</p>
 </div>
 
 </div>
