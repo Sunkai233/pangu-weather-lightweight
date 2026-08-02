@@ -4,6 +4,8 @@
 
 ## 目录
 - **[`学习总表与借鉴对照.md`](学习总表与借鉴对照.md)** —— ★主文档:16 单元总表,逐单元标清「可从 baseline/成熟包直接借鉴(不用背)」vs「必须自己能默写的核心考点」+ 最高频考点清单。
+- **[`训练与调试实战.md`](训练与调试实战.md)** —— ★怎么在环境里搭/训/调:6 大考点各一段可跑最小自测(可逆/形状/无NaN/正交)+ 端到端训练命令 + 健康信号 + 常见 bug 修法表。
+- **[`selftest_6考点.py`](selftest_6考点.py)** —— 一键跑 6 考点 PASS/FAIL(**DCU 实测 6/6 全过**);`python selftest_6考点.py`。
 - `baseline/官方源码/` —— 官方 baseline 全套代码(inference/result/train/maxvit3d_student/distill_*/conf/config.yaml),对照学习用。
 - `baseline/onescience源码/` —— onescience 关键源码(Pangu 教师 / ERA5Datapipe / YParams;赛题容器自带包,源码即文档)。
 - `baseline/权重与数据说明.md` —— 教师权重(1.87G)与 ERA5 数据(太大不入库)的容器位置与获取方式。
