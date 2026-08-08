@@ -1,0 +1,74 @@
+﻿========== 训练日志 train2.log(落盘缓存·250 真实共享样本)==========
+[launch2] Sat Aug  8 09:10:37 AM CST 2026 pwd=/public/home/xdzs2026_c296/_bigtrain
+[cfg] embed=64 patch=(2, 8, 8) epochs=8 limit_train=250
+📂 Mode: train, used: [1980] years
+📂 each selected year contains 299 usable samples (input 1, output 1)
+📂 whole dataset contains 99 variables, this model use 69 variables.
+📂 total usable samples: 299
+-------------------------------------------------- 
+📂 Mode: val, used: [1981] years
+📂 each selected year contains 39 usable samples (input 1, output 1)
+📂 whole dataset contains 99 variables, this model use 69 variables.
+📂 total usable samples: 39
+-------------------------------------------------- 
+[teacher] loaded & frozen
+  [cache] 50/250  154s
+  [cache] 100/250  305s
+  [cache] 150/250  458s
+  [cache] 200/250  611s
+  [cache] 250/250  767s
+[cache] train=250 落盘完成 用时769s  dir=/public/home/xdzs2026_c296/_bigtrain/tcache
+[cache] val=39 留RAM
+[model] student=1.70M (2.7%)
+[ep1/8] lr=3.00e-04 train=0.3527 val_gtL1=1.2015 val_match=7.0% 120s
+  [saved best] val_gtL1=1.2015 val_match=7.0%
+[ep2/8] lr=6.00e-04 train=0.1767 val_gtL1=1.0259 val_match=20.1% 116s
+  [saved best] val_gtL1=1.0259 val_match=20.1%
+[ep3/8] lr=6.00e-04 train=0.1643 val_gtL1=0.8570 val_match=32.8% 116s
+  [saved best] val_gtL1=0.8570 val_match=32.8%
+[ep4/8] lr=5.60e-04 train=0.1575 val_gtL1=0.7103 val_match=43.9% 115s
+  [saved best] val_gtL1=0.7103 val_match=43.9%
+[ep5/8] lr=4.50e-04 train=0.1520 val_gtL1=0.5891 val_match=53.0% 114s
+  [saved best] val_gtL1=0.5891 val_match=53.0%
+[ep6/8] lr=3.00e-04 train=0.1463 val_gtL1=0.4913 val_match=60.4% 116s
+  [saved best] val_gtL1=0.4913 val_match=60.4%
+[ep7/8] lr=1.50e-04 train=0.1420 val_gtL1=0.4125 val_match=66.2% 115s
+  [saved best] val_gtL1=0.4125 val_match=66.2%
+[ep8/8] lr=4.02e-05 train=0.1387 val_gtL1=0.3495 val_match=70.7% 114s
+  [saved best] val_gtL1=0.3495 val_match=70.7%
+[done] best val_gtL1=0.3495  student=/public/home/xdzs2026_c296/_bigtrain/student_big.pth
+[launch2-exit] Sat Aug  8 09:40:58 AM CST 2026 rc=0
+
+========== 决赛三赛题测试 finals.log ==========
+###### 赛题① 多步自回归 ######
+=== 赛题① 多步自回归预测(误差累积)===
+-------------------------------------------------- 
+起点 x: (1, 72, 721, 1440)  连续真值帧数=5
+  第 1 步 (t+6h)  RMSE(归一化)=0.1331
+  第 2 步 (t+12h)  RMSE(归一化)=0.1863
+  第 3 步 (t+18h)  RMSE(归一化)=0.2227
+  第 4 步 (t+24h)  RMSE(归一化)=0.2600
+结论:随步数增加 RMSE 单调上升=误差累积,验证'多步预测'确实更难。
+@@FT_DONE
+###### 赛题② 全模型INT8量化 ######
+=== 赛题② 全量模型 INT8 权重量化(体积/精度)===
+-------------------------------------------------- 
+  参数量 64.22 M  被量化的权重张量数=87
+  模型体积  fp32=256.9 MB  →  INT8=64.9 MB  (压缩 3.96×)
+  量化 vs fp32 预测差 RMSE(归一化,越小越无损)=0.00964
+结论:全模型权重 INT8 体积≈1/4,预测几乎无损='全量模型轻量化'可行方向。
+@@FT_DONE
+###### 赛题③ DCU fp16推理 ######
+=== 赛题③ DCU 推理效率:fp16 vs fp32(只计时 model(x))===
+-------------------------------------------------- 
+  fp32  中位 949.4 ms  (min 948.9)  峰值显存 10.32 GB
+  fp16  中位 715.6 ms  (min 715.1)  峰值显存 5.47 GB
+  提速 1.33×  推理时长 -25%  显存 -47%
+结论:model.half() 一行,DCU 上推理更快更省显存、精度基本不掉=部署效率直接提升(评分 V)。
+@@FT_DONE
+ALL_FINALS_DONE Sat Aug  8 09:43:21 AM CST 2026
+
+========== 落盘缓存占用 ==========
+67G	/public/home/xdzs2026_c296/_bigtrain/tcache
+-rw-r--r-- 1 root root 6874808 Aug  8 09:40 /public/home/xdzs2026_c296/_bigtrain/student_big.pth
+@@LOGS_DONE

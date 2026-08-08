@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>真实共享数据 · 内存优化蒸馏训练实测(海光 DCU)</title>
+<style>
+  :root{ --ink:#1a1a1a; --muted:#5b6470; --line:#d9dee5; --code-bg:#f6f8fa; --accent:#0b5cad; --accent2:#8a5a00; --box:#eef4fb; --ok:#0a7d33; --warn:#b45309; }
+  *{ box-sizing:border-box; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ margin:0 auto; max-width:900px; padding:32px 34px 80px; background:#fff; color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif; font-size:15.5px; line-height:1.72; }
+  h1{ font-size:25px; margin:0 0 4px; }
+  h2{ font-size:20px; margin:32px 0 10px; padding-top:10px; border-top:2px solid var(--ink); }
+  h2 .no{ color:var(--accent); }
+  h3{ font-size:16.5px; margin:18px 0 6px; color:var(--accent); }
+  p{ margin:9px 0; }
+  .sub{ color:var(--muted); font-size:13.5px; }
+  .meta{ color:var(--muted); font-size:12.5px; font-family:ui-monospace,Consolas,monospace; word-break:break-all; }
+  code.inl{ background:var(--code-bg); padding:1px 5px; border-radius:4px; font-family:ui-monospace,Consolas,monospace; font-size:13px; }
+  pre{ background:var(--code-bg); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:6px;
+    padding:12px 14px; overflow-x:auto; margin:12px 0; font-family:ui-monospace,Consolas,monospace; font-size:12.4px; line-height:1.5; white-space:pre; }
+  .note{ background:var(--box); border:1px solid #cfe0f2; border-radius:6px; padding:10px 14px; margin:12px 0; }
+  .warn{ background:#fff7e6; border:1px solid #f0d38a; border-radius:6px; padding:10px 14px; margin:12px 0; }
+  .ok{ background:#eafaf0; border:1px solid #b6e6c8; border-radius:6px; padding:10px 14px; margin:12px 0; }
+  .lead{ background:var(--box); border-radius:8px; padding:14px 18px; margin:14px 0; }
+  ul{ margin:8px 0; padding-left:22px; } li{ margin:4px 0; }
+  figure{ margin:16px 0; text-align:center; } figcaption{ color:var(--muted); font-size:12.5px; margin-top:6px; }
+  table{ border-collapse:collapse; width:100%; margin:12px 0; font-size:13.5px; }
+  th,td{ border:1px solid var(--line); padding:6px 10px; text-align:left; }
+  th{ background:var(--box); }
+  .shape{ font-family:ui-monospace,Consolas,monospace; font-size:12.5px; color:var(--accent2); }
+  hr{ border:none; border-top:1px solid var(--line); margin:24px 0; }
+  @media print{ body{ max-width:none; padding:0 6mm; font-size:11pt; } h2,h3{ page-break-after:avoid; } pre,.note,.warn,.ok,figure,table{ page-break-inside:avoid; } }
+</style>
+</head>
+<body>
+
+<h1>真实共享数据 · 内存优化蒸馏训练实测</h1>
+<p class="sub">先导杯气象大模型轻量化(决赛 · 海光 DCU)——用集群共享盘的真实 ERA5,在容器内存受限下训练学生模型</p>
+<p class="meta">环境:SCNet 海光 DCU 容器 · torch 2.5.1 · onescience · 教师 Pangu(model_bak.pth) · 学生 MaxVit3DStudent</p>
+
+<div class="lead">
+<p style="margin-top:0"><b>一句话。</b>共享盘 <code class="inl">/work2/share/.../ERA5/old-data</code> 有 <b>21 年 × 每年 1460 时刻 ≈ 3 万个真实时刻</b>(99 通道,单文件 411MB)。但它<b>不在容器挂载里</b>,且容器<b>内存被 cgroup 限死在 63.8 GB</b>——直接把几百样本的教师输出塞进 RAM 会 <b>OOM</b>。本文记录如何 ① 把共享数据读进容器、② 用<b>落盘缓存</b>绕开内存墙,在几百个真实样本上完成学生蒸馏训练。</p>
+</div>
+
+<h2><span class="no">一</span>　共享数据:在哪、长什么样、怎么读进容器</h2>
+<h3>1.1 共享盘的真实规模</h3>
+<p>登录/计算节点的宿主机上,共享盘路径 <code class="inl">/work2/share/sugonhpcapp01/ERA5/old-data</code>:</p>
+<table>
+<tr><th>项</th><th>值</th></tr>
+<tr><td>年份</td><td>1980–2000,共 <b>21 年</b></td></tr>
+<tr><td>每年时刻数</td><td><b>1460</b>(6h 一个,4×365)</td></tr>
+<tr><td>总时刻</td><td>≈ <b>30,660</b> 个(几万,远超"几百/几千")</td></tr>
+<tr><td>单文件</td><td><code class="inl">data/{年}/{YYYYMMDDHH}.h5</code>,<b>99 通道</b> <span class="shape">(99,721,1440)</span>,<b>411 MB</b>/个</td></tr>
+<tr><td>一年占用</td><td>≈ 560 GB</td></tr>
+</table>
+
+<h3>1.2 关键难点:共享盘不在容器里</h3>
+<p>DCU 训练跑在 <code class="inl">sudo ai_docker exec</code> 进的容器里,但容器的挂载命名空间<b>看不到</b> <code class="inl">/work2</code>(<code class="inl">ls /work2</code> → No such file)。容器里 <code class="inl">/public/share/sugonhpcapp01</code> 是<b>空挂载点</b>。只有<b>计算节点宿主机</b>能读 <code class="inl">/work2</code>。而容器和宿主机<b>共享同一个 <code class="inl">/public/home</code> NFS</b>。</p>
+
+<div class="note"><b>读法(与当年 <code class="inl">era5_real</code> 同一套路,它带 <code class="inl">.copy_done</code> 标记)</b>:在<b>宿主机</b>上把需要的年份/时刻从 <code class="inl">/work2</code> <b>拷到 <code class="inl">/public/home/.../era5_big</code></b>(容器可见),容器再从 <code class="inl">/public</code> 读。<code class="inl">stats/static/metadata</code> 直接复用 <code class="inl">era5_real</code> 的(同变量、同归一化)。</p></div>
+
+<figure>
+<svg viewBox="0 0 820 210" width="100%" style="max-width:760px" xmlns="http://www.w3.org/2000/svg" font-family="Consolas,monospace" font-size="12">
+<defs><marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#0b5cad"/></marker></defs>
+<rect x="14" y="70" width="200" height="66" rx="7" fill="#fff7e6" stroke="#8a5a00"/>
+<text x="114" y="92" text-anchor="middle">/work2 共享盘</text>
+<text x="114" y="110" text-anchor="middle" fill="#8a5a00">21年×1460 · 99ch</text>
+<text x="114" y="126" text-anchor="middle" fill="#8a5a00">仅宿主机可读</text>
+<rect x="300" y="70" width="210" height="66" rx="7" fill="#eef4fb" stroke="#0b5cad"/>
+<text x="405" y="92" text-anchor="middle">/public/.../era5_big</text>
+<text x="405" y="110" text-anchor="middle" fill="#8a5a00">拷 1980(300)+1981(40)</text>
+<text x="405" y="126" text-anchor="middle" fill="#8a5a00">容器/宿主机都可见</text>
+<rect x="600" y="70" width="205" height="66" rx="7" fill="#eef4fb" stroke="#0b5cad"/>
+<text x="702" y="92" text-anchor="middle">容器 DCU 训练</text>
+<text x="702" y="110" text-anchor="middle" fill="#8a5a00">ERA5Datapipe 读</text>
+<text x="702" y="126" text-anchor="middle" fill="#8a5a00">99→69 过滤</text>
+<line x1="214" y1="103" x2="298" y2="103" stroke="#0b5cad" stroke-width="1.5" marker-end="url(#a)"/>
+<text x="256" y="95" text-anchor="middle" fill="#8a5a00">宿主机 cp</text>
+<text x="256" y="150" text-anchor="middle" fill="#8a5a00">~550MB/s</text>
+<line x1="510" y1="103" x2="598" y2="103" stroke="#0b5cad" stroke-width="1.5" marker-end="url(#a)"/>
+<text x="554" y="95" text-anchor="middle" fill="#8a5a00">同一NFS</text>
+</svg>
+<figcaption>共享数据进容器的三段式路径:宿主机拷贝 → /public 共享 NFS → 容器读取。</figcaption>
+</figure>
+
+<h3>1.3 实测</h3>
+<p>宿主机 <code class="inl">cp</code> 速度实测 <b>~550 MB/s</b>(20 个文件 7.7GB / 14s)。本次拷训练年 <b>1980 的 300 个时刻</b>(115GB)+ 验证年 <b>1981 的 40 个</b>,共 131GB。容器里 <code class="inl">ERA5Datapipe</code> 读到:<b>train 1980 = 299 个可用样本</b>、val 1981 = 39 个,自动把 99 通道按 <code class="inl">metadata.json</code> 过滤成模型用的 <b>69 通道</b>。</p>
+
+<h2><span class="no">二</span>　内存的坑与优化:从 RAM 缓存到落盘缓存</h2>
+<h3>2.1 坑:容器内存被限死 63.8 GB</h3>
+<p>原始的"快速版"训练脚本 <code class="inl">distill_scnet_fast.py</code> 为了加速,把<b>所有样本</b>的 (输入 + 教师输出 + 真值) 一次性缓存进 <b>RAM</b>,训练循环不再跑教师、不再读 NFS。它的注释说"节点 461G RAM"——但那是<b>宿主机</b>。容器 <code class="inl">cat /sys/fs/cgroup/memory/memory.limit_in_bytes</code> = <b>63.75 GB</b>。</p>
+<p>每个样本 RAM 缓存需存 5 个 fp16 大张量:输入72 + 教师sf4 + 教师ua65 + 真值sf4 + 真值ua65 = 210 通道:</p>
+<pre>每样本 ≈ 210 × 721 × 1440 × 2 字节 ≈ 436 MB
+63.8 GB / 436 MB ≈ 146 个样本  ← RAM 缓存上限
+→ 299 个样本 × 436 MB ≈ 147 GB  ≫ 63.8 GB  ⇒ 进程被 OOM Killed</pre>
+<div class="warn"><b>实测复现</b>:直接跑 299 样本,进程在缓存阶段被 <code class="inl">Killed</code>(SIGKILL,无 traceback)。这正是"决赛强化轻量化/内存约束"要解决的真问题。</div>
+
+<h3>2.2 优化:落盘缓存(disk cache)</h3>
+<p>解法 = <b>教师输出预计算落盘</b>,训练用 <code class="inl">DataLoader</code> 按需从磁盘读,RAM 只占少量。再叠两个省盘技巧:</p>
+<ul>
+<li><b>只存动态 69 通道</b>,不存 3 个静态掩码(常量,训练时再插回)→ 输入从 72 压到 69。</li>
+<li><b>纯蒸馏(对教师)</b>,训练样本<b>不存真值</b> → 每样本只存 输入69 + 教师69 = 138 通道 ≈ 287 MB(省掉一半)。</li>
+<li><b>验证集(39 个)留 RAM</b> 且带真值,用于算 <code class="inl">val_gtL1</code>(对真值)与 <code class="inl">val_match</code>(对教师)。</li>
+</ul>
+<pre>训练缓存(磁盘) = 250 × 287 MB ≈ 72 GB     (家目录配额 450G 内,够)
+验证缓存(RAM)  = 39 × 436 MB ≈ 17 GB      (< 63.8 GB,够)
+训练时 RAM 峰值 ≈ DataLoader预取(3 worker × 287MB) + 验证17G + 模型 ≈ 20 GB  ✓</pre>
+<div class="ok"><b>要点</b>:RAM 缓存快但受 63.8G 顶;落盘缓存慢一点(每 epoch 多读磁盘)但能吃下几百/几千样本——<b>内存不再是上限,磁盘才是</b>。要扩到几千,继续拷更多年份、缓存到磁盘即可。</div>
+
+<h2><span class="no">三</span>　训练流程与关键代码</h2>
+<p>完整脚本见同目录 <code class="inl">代码/distill_diskcache_scnet.py</code>。三段式:</p>
+<h3>3.1 落盘缓存(教师只跑一次)</h3>
+<pre># 每个训练样本:读 era5_big → 拼 72ch → 教师前向(bf16) → 只存 输入69+教师69 到磁盘
+with torch.no_grad():
+    for i, data in enumerate(train_loader):
+        x, x69 = build72(data[0])              # x:72ch(带掩码)  x69:69ch(存盘)
+        with torch.autocast("cuda", dtype=torch.bfloat16):
+            ts, tu = teacher(x)                # 教师输出(蒸馏目标)
+        torch.save({"x69": x69[0].half().cpu(),
+                    "tsf": ts[0].half().cpu(),
+                    "tua": tu[0].half().cpu()}, f"tcache/tr_{i:04d}.pt")</pre>
+<h3>3.2 按需读盘的 Dataset + 静态掩码插回</h3>
+<pre>class DiskCache(Dataset):
+    def __getitem__(self, i):
+        d = torch.load(self.paths[i], map_location="cpu")
+        return d["x69"], d["tsf"], d["tua"]        # 低内存:一次只读一个样本
+
+def ins_mask(x69):                                  # 训练时把 3 个常量静态掩码插回
+    return torch.cat([x69[:, :4], smask, x69[:, 4:]], 1)   # 69 → 72</pre>
+<h3>3.3 学生训练(AdamW + warmup余弦 + 梯度裁剪 + EMA + bf16)</h3>
+<pre>loader = DataLoader(DiskCache(paths), batch_size=1, shuffle=True,
+                    num_workers=3, pin_memory=True, prefetch_factor=2)   # 预取重叠 IO
+for ep in range(epochs):
+    for x69, tsf, tua in loader:
+        x = ins_mask(x69.float().to(DEV))
+        with torch.autocast("cuda", dtype=torch.bfloat16):
+            ss, su = student(x); su = su.reshape(tua.shape)
+        loss = wl1(ss, tsf, sw, 0.25) + wl1(su, tua, pw, 1.0)   # 加权 L1 蒸馏(地面0.25/高空1.0)
+        loss.backward(); clip_grad_norm_(...); opt.step(); ema_update(ema, student)
+    val_gtL1, val_match = evaluate(ema)            # 对真值 + 对教师 双指标</pre>
+<p><b>损失</b>:逐通道加权 L1,权重来自官方 config(海平面气压1.5、2m气温3.0、位势3.0、比湿0.6…)。<b>双指标</b>:<code class="inl">val_gtL1</code> 对真实 6h 后场(越低越接近真实技能)、<code class="inl">val_match</code> 对教师(表达力,越高越像教师)。</p>
+
+<h2><span class="no">四</span>　实测结果</h2>
+<div class="ok"><b>结论先行</b>:落盘缓存在 63.8G 容器内成功吃下 <b>250 个真实共享样本</b>,学生 8 epoch 干净收敛——train loss 0.35→0.14、<b>val_gtL1 1.20→0.35</b>、<b>val_match(像教师程度)7%→70.7%</b>,全程 RAM 未爆(RAM 缓存版同样样本需 147GB → OOM)。</div>
+<h3>4.1 配置与开销</h3>
+<table>
+<tr><th>项</th><th>值</th></tr>
+<tr><td>训练数据</td><td>真实共享盘 ERA5 · 1980 年 <b>250 样本</b>(验证 1981 年 39 样本),99→69 通道</td></tr>
+<tr><td>学生模型</td><td>MaxVit3DStudent · embed64 / depths(1,3,1) / heads(4,8,4) / patch(2,8,8) = <b>1.70 M</b>(教师 64.22M 的 <b>2.7%</b>),权重 6.87 MB</td></tr>
+<tr><td>内存优化</td><td>落盘缓存 <b>72 GB</b>(磁盘) + 验证 17GB(RAM);训练 RAM 峰值 ~20GB &lt; 63.8GB 上限 ✓</td></tr>
+<tr><td>缓存耗时</td><td>250 样本教师预计算落盘 <b>769 s</b>(~13min,只此一次)</td></tr>
+<tr><td>训练耗时</td><td>8 epoch × ~115 s ≈ <b>15.4 min</b></td></tr>
+<tr><td>损失</td><td>逐通道加权 L1 纯蒸馏(地面0.25 / 高空1.0);AdamW + warmup2余弦 + 裁剪 + EMA + bf16</td></tr>
+</table>
+<h3>4.2 逐 epoch 收敛</h3>
+<table>
+<tr><th>epoch</th><th>lr</th><th>train loss</th><th>val_gtL1(对真值↓)</th><th>val_match(对教师↑)</th></tr>
+<tr><td>1</td><td>3.0e-4</td><td>0.3527</td><td>1.2015</td><td>7.0%</td></tr>
+<tr><td>2</td><td>6.0e-4</td><td>0.1767</td><td>1.0259</td><td>20.1%</td></tr>
+<tr><td>3</td><td>6.0e-4</td><td>0.1643</td><td>0.8570</td><td>32.8%</td></tr>
+<tr><td>4</td><td>5.6e-4</td><td>0.1575</td><td>0.7103</td><td>43.9%</td></tr>
+<tr><td>5</td><td>4.5e-4</td><td>0.1520</td><td>0.5891</td><td>53.0%</td></tr>
+<tr><td>6</td><td>3.0e-4</td><td>0.1463</td><td>0.4913</td><td>60.4%</td></tr>
+<tr><td>7</td><td>1.5e-4</td><td>0.1420</td><td>0.4125</td><td>66.2%</td></tr>
+<tr><td><b>8</b></td><td>4.0e-5</td><td><b>0.1387</b></td><td><b>0.3495</b></td><td><b>70.7%</b></td></tr>
+</table>
+<figure>
+<svg viewBox="0 0 540 210" width="100%" style="max-width:540px" xmlns="http://www.w3.org/2000/svg" font-family="Consolas,monospace" font-size="11">
+<line x1="60" y1="30" x2="60" y2="180" stroke="#999"/><line x1="60" y1="180" x2="500" y2="180" stroke="#999"/>
+<text x="30" y="35" fill="#0b5cad">1.3</text><text x="30" y="180" fill="#0b5cad">0</text>
+<text x="505" y="35" fill="#8a5a00">100%</text><text x="505" y="180" fill="#8a5a00">0</text>
+<polyline fill="none" stroke="#0b5cad" stroke-width="2" points="60,41.4 120,61.6 180,81.1 240,98.1 300,112.1 360,123.3 420,132.4 480,139.7"/>
+<polyline fill="none" stroke="#8a5a00" stroke-width="2" stroke-dasharray="4,3" points="60,169.5 120,149.9 180,130.8 240,114.1 300,100.5 360,89.4 420,80.7 480,74"/>
+<text x="150" y="20" fill="#0b5cad">— val_gtL1(↓ 越低越接近真实技能)</text>
+<text x="150" y="200" fill="#8a5a00">-- val_match(↑ 越高越像教师)</text>
+<text x="55" y="195">ep1</text><text x="470" y="195">ep8</text>
+</svg>
+<figcaption>250 个真实共享样本上,8 epoch 内 val_gtL1 单调下降、val_match 单调上升——蒸馏有效、无过拟合迹象。</figcaption>
+</figure>
+<p><b>说明</b>:这是<b>流程正确性 + 内存优化可行性</b>的验证(小学生 1.7M / 短训 8 epoch)。要冲精度,把 <code class="inl">--limit-train</code> 调大(几百→几千)、<code class="inl">--epochs</code> 拉长、<code class="inl">--embed</code> 加宽即可,内存不变(落盘缓存)。</p>
+
+<h2><span class="no">五</span>　如何扩到几千样本</h2>
+<ul>
+<li><b>数据</b>:宿主机继续从 <code class="inl">/work2</code> 拷更多年份(1980–2000 任选)到 <code class="inl">era5_big/data/{年}</code>,config 的 <code class="inl">train_ratio</code> 加年份即可。</li>
+<li><b>内存</b>:落盘缓存下,RAM 恒定(只读一个样本),样本数只受<b>磁盘配额</b>限制(每样本 ~287MB,450G 配额可存 ~1500 个)。要更多则清理原始 h5(缓存已含所需),或缩通道/降精度。</li>
+<li><b>速度</b>:每 epoch 从 NFS 读整份缓存是瓶颈;可加大 <code class="inl">num_workers</code>、或把缓存放更快的本地盘(若容器有 <code class="inl">/tmp</code> 本地存储)。</li>
+</ul>
+<p class="meta">配套代码:代码/distill_diskcache_scnet.py(落盘缓存·本次实测用) · 代码/distill_scnet_fast_RAM缓存原版.py(RAM缓存·会 OOM 的原版,对照) · 代码/finals_tests.py(决赛三赛题测试)</p>
+
+</body>
+</html>

@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MaxViT-3D 学生网络 · 代码逐块精讲(含数学推导)</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] },
+  svg: { fontCache: 'global' },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<style>
+  :root{ --ink:#1a1a1a; --muted:#5b6470; --line:#d9dee5; --code-bg:#f6f8fa; --accent:#0b5cad; --accent2:#8a5a00; --box:#eef4fb; }
+  *{ box-sizing:border-box; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{
+    margin:0 auto; max-width:880px; padding:32px 34px 80px;
+    background:#fff; color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    font-size:15.5px; line-height:1.72;
+  }
+  h1{ font-size:25px; margin:0 0 4px; letter-spacing:.3px; }
+  h2{ font-size:20px; margin:34px 0 10px; padding-top:10px; border-top:2px solid var(--ink); }
+  h2 .no{ color:var(--accent); font-variant-numeric:tabular-nums; }
+  h3{ font-size:16.5px; margin:20px 0 6px; color:var(--accent); }
+  p{ margin:9px 0; }
+  .sub{ color:var(--muted); font-size:13.5px; margin:0 0 2px; }
+  .meta{ color:var(--muted); font-size:12.5px; font-family:ui-monospace,Consolas,monospace; word-break:break-all; }
+  code.inl{ background:var(--code-bg); padding:1px 5px; border-radius:4px; font-family:ui-monospace,Consolas,"Cascadia Code",monospace; font-size:13px; }
+  pre{
+    background:var(--code-bg); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:6px; padding:12px 14px; overflow-x:auto; margin:12px 0;
+    font-family:ui-monospace,Consolas,"Cascadia Code",monospace; font-size:12.6px; line-height:1.55;
+    white-space:pre; tab-size:4;
+  }
+  pre .cm{ color:#6a8759; }         /* 注释色(仅装饰,不逐行) */
+  .note{ background:var(--box); border:1px solid #cfe0f2; border-radius:6px; padding:10px 14px; margin:12px 0; }
+  .note b{ color:var(--accent); }
+  .warn{ background:#fff7e6; border:1px solid #f0d38a; border-radius:6px; padding:10px 14px; margin:12px 0; }
+  .math{ overflow-x:auto; }
+  .lead{ background:var(--box); border-radius:8px; padding:14px 18px; margin:14px 0; }
+  ul{ margin:8px 0; padding-left:22px; }
+  li{ margin:4px 0; }
+  .tag{ display:inline-block; font-size:11.5px; color:#fff; background:var(--accent); border-radius:4px; padding:1px 7px; margin-left:6px; vertical-align:2px; }
+  .tag.g{ background:var(--accent2); }
+  .shape{ font-family:ui-monospace,Consolas,monospace; font-size:12.5px; color:var(--accent2); }
+  figure{ margin:16px 0; text-align:center; }
+  figcaption{ color:var(--muted); font-size:12.5px; margin-top:6px; }
+  .kv{ font-size:13.5px; }
+  .kv b{ color:var(--accent); }
+  hr{ border:none; border-top:1px solid var(--line); margin:26px 0; }
+  a{ color:var(--accent); }
+  @media print{
+    body{ max-width:none; padding:0 6mm; font-size:11pt; }
+    h2{ page-break-after:avoid; }
+    h3{ page-break-after:avoid; }
+    pre,.note,.warn,.lead,figure{ page-break-inside:avoid; }
+    a{ color:var(--ink); text-decoration:none; }
+  }
+</style>
+</head>
+<body>
+
+<h1>MaxViT-3D 学生网络 · 代码逐块精讲</h1>
+<p class="sub">盘古气象大模型轻量化(先导杯赛题二 · 海光 DCU)· 含逐块中文注释与 LaTeX 数学推导</p>
+<p class="meta">源文件:决赛学习路线/baseline/官方源码/maxvit3d_student.py　·　366 行　·　MaxVit3DStudent()</p>
+
+<div class="lead">
+<p style="margin-top:0"><b>这是什么。</b>这是我们自己设计的<b>学生网络</b>——一个轻量的三维气象 Transformer,通过<b>知识蒸馏</b>去逼近官方大教师 Pangu-Weather,在保持精度(W)的同时把<b>模型大小(U)</b>和<b>推理时长(V)</b>压下来。它的输入/输出与教师<b>严格一致</b>,所以能直接用官方 <code class="inl">result.py</code> 评测、能蒸馏。</p>
+<p style="margin-bottom:0"><b>五个设计支点</b>(全文围绕它们展开):
+① 注意力 = <b>局部 block</b>(连续窗口抓细节)+ <b>全局 grid</b>(等距散布抓大尺度环流)交替;
+② <b>QK-Norm</b> 余弦注意力 + 每头可学习温度(训练稳、可更深更窄);
+③ <b>RMSNorm</b> 替 LayerNorm、<b>SwiGLU</b> 门控 FFN、<b>LayerScale + DropPath</b>;
+④ 复用官方 <b>stem/head</b>(Patch Embedding / Recovery)保证 I/O 对齐;
+⑤ <b>U 形</b>骨干,大部分层在 1/4 分辨率上算,直接省 V/U。</p>
+</div>
+
+<h3>整体数据流(forward 一览)</h3>
+<figure>
+<svg viewBox="0 0 860 430" width="100%" style="max-width:820px" xmlns="http://www.w3.org/2000/svg" font-family="Consolas,monospace" font-size="12.5">
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#0b5cad"/>
+    </marker>
+    <style>.b{fill:#eef4fb;stroke:#0b5cad;stroke-width:1.3;rx:7} .g{fill:#fff7e6;stroke:#8a5a00;stroke-width:1.3} .t{fill:#1a1a1a} .s{fill:#8a5a00;font-size:11px} .ln{stroke:#0b5cad;stroke-width:1.4;fill:none}</style>
+  </defs>
+  <!-- input -->
+  <rect class="b" x="20" y="16" width="200" height="40" rx="7"/>
+  <text class="t" x="120" y="33" text-anchor="middle">输入 x</text>
+  <text class="s" x="120" y="48" text-anchor="middle">[B, 72, 721, 1440]</text>
+  <!-- split -->
+  <rect class="b" x="20" y="86" width="95" height="52" rx="7"/>
+  <text class="t" x="67" y="104" text-anchor="middle">surface</text>
+  <text class="s" x="67" y="118" text-anchor="middle">[:7]</text>
+  <text class="s" x="67" y="131" text-anchor="middle">2D embed</text>
+  <rect class="b" x="125" y="86" width="95" height="52" rx="7"/>
+  <text class="t" x="172" y="104" text-anchor="middle">upper</text>
+  <text class="s" x="172" y="118" text-anchor="middle">[7:]→5×13</text>
+  <text class="s" x="172" y="131" text-anchor="middle">3D embed</text>
+  <line class="ln" x1="120" y1="56" x2="67" y2="86" marker-end="url(#ar)"/>
+  <line class="ln" x1="120" y1="56" x2="172" y2="86" marker-end="url(#ar)"/>
+  <!-- concat tokens -->
+  <rect class="b" x="20" y="168" width="200" height="44" rx="7"/>
+  <text class="t" x="120" y="186" text-anchor="middle">拼 8 层 → token 序列</text>
+  <text class="s" x="120" y="202" text-anchor="middle">[B, N=8·181·360, 192]</text>
+  <line class="ln" x1="67" y1="138" x2="110" y2="168" marker-end="url(#ar)"/>
+  <line class="ln" x1="172" y1="138" x2="130" y2="168" marker-end="url(#ar)"/>
+  <!-- U form right column -->
+  <rect class="b" x="300" y="86" width="240" height="40" rx="7"/>
+  <text class="t" x="420" y="103" text-anchor="middle">enc(全分辨率)</text>
+  <text class="s" x="420" y="118" text-anchor="middle">block+grid ×ne　→ 存 skip</text>
+  <rect class="g" x="300" y="146" width="240" height="40" rx="7"/>
+  <text class="t" x="420" y="163" text-anchor="middle">downsample　H,W /2</text>
+  <text class="s" x="420" y="178" text-anchor="middle">[B, N/4, 384]</text>
+  <rect class="b" x="300" y="206" width="240" height="46" rx="7"/>
+  <text class="t" x="420" y="224" text-anchor="middle">mid(1/4 token · 算力大头)</text>
+  <text class="s" x="420" y="240" text-anchor="middle">block+grid ×nm</text>
+  <rect class="g" x="300" y="272" width="240" height="40" rx="7"/>
+  <text class="t" x="420" y="289" text-anchor="middle">upsample　→ [B, N, 192]</text>
+  <rect class="b" x="300" y="332" width="240" height="40" rx="7"/>
+  <text class="t" x="420" y="349" text-anchor="middle">dec(全分辨率)</text>
+  <text class="s" x="420" y="364" text-anchor="middle">block+grid ×nd</text>
+  <line class="ln" x1="220" y1="190" x2="300" y2="106" marker-end="url(#ar)"/>
+  <line class="ln" x1="420" y1="126" x2="420" y2="146" marker-end="url(#ar)"/>
+  <line class="ln" x1="420" y1="186" x2="420" y2="206" marker-end="url(#ar)"/>
+  <line class="ln" x1="420" y1="252" x2="420" y2="272" marker-end="url(#ar)"/>
+  <line class="ln" x1="420" y1="312" x2="420" y2="332" marker-end="url(#ar)"/>
+  <!-- skip -->
+  <path class="ln" d="M540,106 C610,106 610,352 540,352" stroke-dasharray="5,4" marker-end="url(#ar)"/>
+  <text class="s" x="600" y="228" text-anchor="middle" transform="rotate(90 600 228)">skip concat</text>
+  <!-- head -->
+  <rect class="b" x="620" y="332" width="220" height="40" rx="7"/>
+  <text class="t" x="730" y="350" text-anchor="middle">concat skip → recovery</text>
+  <text class="s" x="730" y="365" text-anchor="middle">[B, N, 384]</text>
+  <line class="ln" x1="540" y1="352" x2="620" y2="352" marker-end="url(#ar)"/>
+  <rect class="b" x="620" y="250" width="105" height="52" rx="7"/>
+  <text class="t" x="672" y="270" text-anchor="middle">out_sfc</text>
+  <text class="s" x="672" y="284" text-anchor="middle">[B,4,</text>
+  <text class="s" x="672" y="296" text-anchor="middle">721,1440]</text>
+  <rect class="b" x="735" y="250" width="105" height="52" rx="7"/>
+  <text class="t" x="787" y="270" text-anchor="middle">out_upper</text>
+  <text class="s" x="787" y="284" text-anchor="middle">[B,5,13,</text>
+  <text class="s" x="787" y="296" text-anchor="middle">721,1440]</text>
+  <line class="ln" x1="700" y1="332" x2="680" y2="302" marker-end="url(#ar)"/>
+  <line class="ln" x1="760" y1="332" x2="780" y2="302" marker-end="url(#ar)"/>
+</svg>
+<figcaption>72 通道进 → 拆地面/高空各自 Patch Embed → 拼成 token → U 形骨干(enc/down/mid/up/dec + skip)→ Recovery → 地面 4 通道 + 高空 5×13 出。</figcaption>
+</figure>
+
+<div class="note">若本页公式显示成 <code class="inl">\( ... \)</code> 之类的原始文本,说明打开时未联网加载 MathJax。联网刷新一次即可渲染成公式(打印前先在浏览器里等公式显示出来再打印)。</div>
+
+
+<h2><span class="no">0</span>　模块头 / 依赖 / 双 API 自适配</h2>
+<pre># -*- coding: utf-8 -*-
+"""
+MaxViT-3D 学生模型  (盘古轻量化 · EXP-C1)
+========================================================
+设计要点:
+  - 注意力 = 局部 block(连续窗口·抓细节) + 全局 grid(等距散布·抓大尺度环流),交替堆叠
+  - QK-Norm: q,k 先 L2 归一化再点积(余弦注意力)+ 每头可学习温度(SwinV2 风格),训练更稳、可更深更窄
+  - RMSNorm 替 LayerNorm; SwiGLU 门控 FFN; LayerScale + DropPath
+  - I/O 与官方 Pangu 严格一致: 入 [B,72,721,1440] -> 出 (surface[B,4,721,1440], upper[B,5,13,721,1440])
+  - stem(PatchEmbed2D/3D)与 head(PatchRecovery2D/3D)复用官方模块,保证形状与教师可蒸馏、可用官方 result.py 评测
+  - 仅在中间“Fuser/骨干”用本文件的高表达力注意力替换官方 EarthAttention3D 窗口注意力
+注: 当前为可运行脚手架(单分辨率骨干@embed_dim=192),后续可加 U 形多尺度 / 缩小 embed_dim。
+"""
+import math
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
+
+from onescience.modules import OneEmbedding, OneRecovery, OneSample  # 工厂(SCNet/abc66 均有,style 名不同)
+
+
+def _detect_pangu_api():
+    """SCNet onescience 0.3.0 = 统一 PanguEmbedding;abc66(PyPI) = PanguEmbedding2D/3D 分版。"""
+    try:
+        OneEmbedding(style="PanguEmbedding", img_size=(721, 1440), patch_size=(4, 4), Variables=7, embed_dim=8)
+        return "unified"
+    except Exception:
+        return "split"
+
+
+_PANGU_API = _detect_pangu_api()</pre>
+<p><b>讲解。</b>只依赖 <code class="inl">torch</code> 和 <code class="inl">onescience.modules</code> 的三个工厂:<code class="inl">OneEmbedding</code>(切 patch)、<code class="inl">OneRecovery</code>(反卷积恢复)、<code class="inl">OneSample</code>(下/上采样)。<code class="inl">checkpoint</code> 用于<b>梯度检查点</b>(训练时用重算换显存)。</p>
+<p><code class="inl">_detect_pangu_api()</code> 解决一个工程坑:不同机器上 onescience 版本的 API 名不一样——SCNet 的 0.3.0 是<b>统一</b>的 <code class="inl">PanguEmbedding</code>,而 abc66(PyPI 版)是 <code class="inl">PanguEmbedding2D/3D</code> <b>分开</b>两个。它用一次"试探性构造"探测,失败就落到 split 分支。模块加载时执行一次,结果存全局 <code class="inl">_PANGU_API</code>。</p>
+
+
+<h2><span class="no">1</span>　DropPath(随机深度)<span class="tag">正则化</span></h2>
+<pre># ----------------------------- 基础组件 -----------------------------
+class DropPath(nn.Module):
+    def __init__(self, p: float = 0.0):
+        super().__init__()
+        self.p = p
+
+    def forward(self, x):
+        if self.p == 0.0 or not self.training:
+            return x
+        keep = 1.0 - self.p
+        shape = (x.shape[0],) + (1,) * (x.ndim - 1)
+        r = x.new_empty(shape).bernoulli_(keep)
+        if keep > 0:
+            r.div_(keep)
+        return x * r</pre>
+<p><b>讲解。</b>不是丢神经元,而是<b>按样本整条丢掉残差分支</b>(Stochastic Depth):训练时每个样本以概率 \(p\) 让某个残差子层"失效",相当于随机地把网络变浅,起强正则、让深网更好训。<code class="inl">shape=(B,1,1,...)</code> 保证同一样本整条一起丢/留。</p>
+<p><b>数学。</b>令保留概率 \(p_{\text{keep}}=1-p\),对每个样本采一个伯努利掩码 \(r\sim\text{Bernoulli}(p_{\text{keep}})\),输出</p>
+<div class="math">$$\text{DropPath}(x)=\begin{cases}x,&\text{推理 或 } p=0\\[4pt]\dfrac{r}{1-p}\,x,&\text{训练}\end{cases}$$</div>
+<p>除以 \(1-p\) 是<b>反向缩放(inverted dropout)</b>:保证期望不变 \(\;\mathbb{E}[\text{DropPath}(x)]=\dfrac{p_{\text{keep}}}{1-p}\,x=x\),于是推理时可直接用恒等映射、无需再缩放。</p>
+
+
+<h2><span class="no">2</span>　RMSNorm<span class="tag">归一化</span></h2>
+<pre>class RMSNorm(nn.Module):
+    def __init__(self, dim, eps=1e-6):
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(dim))
+
+    def forward(self, x):
+        n = x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
+        return n * self.weight</pre>
+<p><b>讲解。</b>比 LayerNorm 更省:<b>不减均值、不算方差</b>,只用<b>均方根</b>把每个 token 的特征向量缩放到单位尺度,再乘一个逐通道可学习增益 \(g\)。<code class="inl">rsqrt</code> = \(1/\sqrt{\cdot}\)(一条指令)。少了减均值那步,DCU 上更快、数值更稳。</p>
+<p><b>数学。</b>对特征维 \(d\) 上的向量 \(x\in\mathbb R^{d}\):</p>
+<div class="math">$$\mathrm{RMS}(x)=\sqrt{\frac1d\sum_{i=1}^{d}x_i^2+\epsilon},\qquad \mathrm{RMSNorm}(x)=\frac{x}{\mathrm{RMS}(x)}\odot g$$</div>
+<p>对比 LayerNorm \(\;\dfrac{x-\mu}{\sqrt{\sigma^2+\epsilon}}\gamma+\beta\;\):RMSNorm 去掉了 \(\mu,\sigma\) 与偏置 \(\beta\),只保留尺度归一。\(\odot\) 是逐元素乘。</p>
+
+
+<h2><span class="no">3</span>　SwiGLU(门控前馈网络)<span class="tag">FFN</span></h2>
+<pre>class SwiGLU(nn.Module):
+    """门控 FFN: (SiLU(xW1) ⊗ xW3) W2; 隐藏维取 ≈ 8/3·d 使参数与标准 4× GELU 相当。"""
+    def __init__(self, dim, mlp_ratio=4.0, drop=0.0):
+        super().__init__()
+        hidden = int(mlp_ratio * dim * 2 / 3)
+        hidden = (hidden + 7) // 8 * 8
+        self.w12 = nn.Linear(dim, hidden * 2)
+        self.w3 = nn.Linear(hidden, dim)
+        self.drop = nn.Dropout(drop)
+
+    def forward(self, x):
+        a, b = self.w12(x).chunk(2, dim=-1)
+        return self.drop(self.w3(F.silu(a) * b))</pre>
+<p><b>讲解。</b>把普通 MLP 的"升维→激活→降维"换成<b>门控</b>:一路做非线性激活(SiLU),另一路当"门"去逐元素调制它,再降回原维。比 GELU-MLP 表达力更强,是现代 LLM/ViT 的标配。用一个 <code class="inl">w12</code> 一次算出两路(<code class="inl">chunk</code> 切开)省一次矩阵乘。</p>
+<p><b>数学。</b>SiLU(即 Swish):\(\ \mathrm{SiLU}(z)=z\,\sigma(z),\ \sigma(z)=\dfrac{1}{1+e^{-z}}\)。设 \(a=xW_1,\ b=xW_2\)(即代码里 <code class="inl">w12</code> 的两半),门控 FFN 为</p>
+<div class="math">$$\mathrm{SwiGLU}(x)=\big(\underbrace{\mathrm{SiLU}(xW_1)}_{\text{激活路}}\ \odot\ \underbrace{xW_2}_{\text{门路}}\big)\,W_3$$</div>
+<p><b>为什么隐藏维取 \(\approx\frac{8}{3}d\)?</b> 门控用了 <b>3</b> 个权重矩阵(\(W_1,W_2,W_3\)),而标准 MLP 只有 <b>2</b> 个。要让参数量与 \(4d\) 的标准 MLP 相当,须把隐藏维缩到 \(\frac{2}{3}\times 4d=\frac{8}{3}d\)。代码 <code class="inl">int(mlp_ratio*dim*2/3)</code> 正是此意,再 <code class="inl">(h+7)//8*8</code> 向上取到 8 的倍数(对齐硬件、利于 Tensor/Matrix Core)。</p>
+
+
+<h2><span class="no">4</span>　三维分块:局部 block 与全局 grid<span class="tag g">核心</span></h2>
+<pre># ----------------------- 3D 分块: 局部 block / 全局 grid -----------------------
+def _pad3d(x, win):
+    """x:(B,Pl,Lat,Lon,C); 右侧补零到 win 整数倍。返回 (x_pad, (Pl,Lat,Lon)原始)。"""
+    B, Pl, Lat, Lon, C = x.shape
+    wz, wh, ww = win
+    dz = (wz - Pl % wz) % wz
+    dh = (wh - Lat % wh) % wh
+    dw = (ww - Lon % ww) % ww
+    if dz or dh or dw:
+        x = F.pad(x, (0, 0, 0, dw, 0, dh, 0, dz))
+    return x, (Pl, Lat, Lon)
+
+
+def block_partition(x, win):
+    """连续窗口=局部。 (B,Pl,Lat,Lon,C) -> (nW*B, wz*wh*ww, C)"""
+    B, Pl, Lat, Lon, C = x.shape
+    wz, wh, ww = win
+    x = x.view(B, Pl // wz, wz, Lat // wh, wh, Lon // ww, ww, C)
+    x = x.permute(0, 1, 3, 5, 2, 4, 6, 7).contiguous()
+    return x.view(-1, wz * wh * ww, C)
+
+
+def block_reverse(w, win, B, Pl, Lat, Lon):
+    wz, wh, ww = win
+    x = w.view(B, Pl // wz, Lat // wh, Lon // ww, wz, wh, ww, -1)
+    x = x.permute(0, 1, 4, 2, 5, 3, 6, 7).contiguous()
+    return x.view(B, Pl, Lat, Lon, -1)
+
+
+def grid_partition(x, grid):
+    """跨步网格=全局。grid=(gz,gh,gw) 为每个注意力组内 token 数(空间等距散布)。
+       (B,Pl,Lat,Lon,C) -> (nG*B, gz*gh*gw, C)"""
+    B, Pl, Lat, Lon, C = x.shape
+    gz, gh, gw = grid
+    x = x.view(B, gz, Pl // gz, gh, Lat // gh, gw, Lon // gw, C)
+    x = x.permute(0, 2, 4, 6, 1, 3, 5, 7).contiguous()
+    return x.view(-1, gz * gh * gw, C)
+
+
+def grid_reverse(w, grid, B, Pl, Lat, Lon):
+    gz, gh, gw = grid
+    x = w.view(B, Pl // gz, Lat // gh, Lon // gw, gz, gh, gw, -1)
+    x = x.permute(0, 4, 1, 5, 2, 6, 3, 7).contiguous()
+    return x.view(B, Pl, Lat, Lon, -1)</pre>
+<p><b>讲解(这是 MaxViT 的灵魂)。</b>全局注意力在 \(N=8\times181\times360\approx52\) 万个 token 上是 \(O(N^2)\) 天文数字,必须<b>分组</b>算。两种互补分法:</p>
+<ul>
+<li><b>block(局部窗口)</b>:把空间切成<b>连续的小块</b>(如 \(2\times6\times12\)),每块内部做注意力 → 抓<b>局部细节</b>(锋面、局地对流)。</li>
+<li><b>grid(跨步网格)</b>:每组取<b>等距散布</b>在全图上的点(步长 = 分辨率 ÷ 组大小)→ 一组就覆盖全球 → 抓<b>大尺度环流</b>(行星波、副高)。</li>
+</ul>
+<p>两者交替堆叠,就用固定的小窗口开销 \(O(N\cdot|win|)\) 同时拿到<b>局部 + 全局</b>感受野。<code class="inl">_pad3d</code> 先把三个维度右侧补零到窗口整数倍(否则 <code class="inl">view</code> 会形状不整除报错),算完再裁回。</p>
+<p><b>数学(为什么 block 与 grid 只差一个 permute)。</b>把每个空间维 \(L\) 写成 \(L=n\cdot w\)(\(n\) 组、每组 \(w\)):</p>
+<div class="math">$$\text{block:}\ \ \underbrace{[\,n\ \text{组}\,]}_{\text{外:哪个窗口}}\ \underbrace{[\,w\ \text{连续点}\,]}_{\text{内:窗口内}} \qquad\qquad \text{grid:}\ \ \underbrace{[\,w\ \text{组}\,]}_{\text{外:相位}}\ \underbrace{[\,n\ \text{等距点}\,]}_{\text{内:同相位散点}}$$</div>
+<p>block 的 <code class="inl">view(B, Pl//wz, wz, ...)</code> 把"组索引"放外、"组内连续点"放内;grid 的 <code class="inl">view(B, gz, Pl//gz, ...)</code> 恰好<b>颠倒</b>:把"组大小 \(g\)"放外(当作相位)、"每 \(g\) 个里的第几个"放内,于是同一组内的点是<b>间隔 \(Pl/g_z\) 均匀散开</b>的。<code class="inl">permute</code> 再把三个空间的"组索引"聚到 batch 维、"组内点"聚成序列维,最终都变成 <span class="shape">(组数×B, 组内 token 数, C)</span> 喂给同一个注意力。<code class="inl">*_reverse</code> 是逆置换,把注意力结果放回原空间位置。</p>
+
+
+<h2><span class="no">5</span>　三维相对位置偏置 RelPosBias3D<span class="tag">位置编码</span></h2>
+<pre>class RelPosBias3D(nn.Module):
+    """3D 相对位置偏置(Swin 风格),用于窗口/网格内的 N×N 偏置。"""
+    def __init__(self, win, num_heads):
+        super().__init__()
+        a, b, c = win
+        self.win = win
+        self.table = nn.Parameter(torch.zeros((2 * a - 1) * (2 * b - 1) * (2 * c - 1), num_heads))
+        coords = torch.stack(torch.meshgrid(
+            torch.arange(a), torch.arange(b), torch.arange(c), indexing="ij"))  # 3,a,b,c
+        coords = torch.flatten(coords, 1)                       # 3, N
+        rel = coords[:, :, None] - coords[:, None, :]           # 3, N, N
+        rel = rel.permute(1, 2, 0).contiguous()                 # N, N, 3
+        rel[:, :, 0] += a - 1
+        rel[:, :, 1] += b - 1
+        rel[:, :, 2] += c - 1
+        rel[:, :, 0] *= (2 * b - 1) * (2 * c - 1)
+        rel[:, :, 1] *= (2 * c - 1)
+        idx = rel.sum(-1)                                       # N, N
+        self.register_buffer("idx", idx, persistent=False)
+        nn.init.trunc_normal_(self.table, std=0.02)
+
+    def forward(self):
+        a, b, c = self.win
+        N = a * b * c
+        bias = self.table[self.idx.view(-1)].view(N, N, -1)     # N,N,heads
+        return bias.permute(2, 0, 1).contiguous().unsqueeze(0)  # 1,heads,N,N</pre>
+<p><b>讲解。</b>纯注意力对"谁在谁旁边"无感。相对位置偏置给注意力打分<b>加上一项只依赖两 token 相对位移</b> \((\Delta z,\Delta h,\Delta w)\) 的可学习偏置,让模型知道空间几何。同一相对位移<b>共享</b>一个参数(平移不变),所以只存一张小表,再用预计算的整数索引查表。</p>
+<p><b>数学。</b>窗口尺寸 \((a,b,c)\),窗口内 \(N=abc\) 个 token。任意两点相对坐标每维范围是 \([-(L-1),\,L-1]\),共 \(2L-1\) 个取值。把三维相对坐标先平移到非负,再用<b>混合进制</b>压成一个整数索引:</p>
+<div class="math">$$\mathrm{idx}=(\Delta z{+}a{-}1)\,(2b{-}1)(2c{-}1)\;+\;(\Delta h{+}b{-}1)\,(2c{-}1)\;+\;(\Delta w{+}c{-}1)$$</div>
+<p>索引范围恰好 \(0\ldots(2a{-}1)(2b{-}1)(2c{-}1)-1\),对应参数表 <code class="inl">table</code> 的行数。查表得 \(B\in\mathbb R^{\,\text{heads}\times N\times N}\),加到注意力 logits 上(见 §6)。<code class="inl">idx</code> 存成 buffer(不训练),<code class="inl">table</code> 才是可学习参数,<code class="inl">trunc_normal_</code> 初始化。</p>
+
+
+<h2><span class="no">6</span>　Attention3D:QK-Norm 余弦注意力<span class="tag g">核心</span></h2>
+<pre>_USE_SDPA = False  # 置 True 用融合注意力(SDPA, 不物化 N×N, 省显存); maxvit3d_student._USE_SDPA = True
+
+
+def set_sdpa(v: bool):
+    global _USE_SDPA
+    _USE_SDPA = bool(v)
+
+
+class Attention3D(nn.Module):
+    """带 QK-Norm 的多头注意力(余弦缩放 + 每头可学习温度)+ 相对位置偏置。"""
+    def __init__(self, dim, win, num_heads, qkv_bias=True, attn_drop=0.0, proj_drop=0.0):
+        super().__init__()
+        assert dim % num_heads == 0
+        self.num_heads = num_heads
+        self.head_dim = dim // num_heads
+        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.proj = nn.Linear(dim, dim)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.proj_drop = nn.Dropout(proj_drop)
+        self.bias = RelPosBias3D(win, num_heads)
+        # QK-Norm 温度(每头),初始 log(10),上限 clamp(SwinV2)
+        self.logit_scale = nn.Parameter(torch.log(10.0 * torch.ones(num_heads, 1, 1)))
+
+    def forward(self, x):
+        Bn, N, C = x.shape
+        qkv = self.qkv(x).reshape(Bn, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+        q, k, v = qkv[0], qkv[1], qkv[2]                        # Bn,heads,N,hd
+        q = F.normalize(q, dim=-1)                              # QK-Norm
+        k = F.normalize(k, dim=-1)
+        scale = torch.clamp(self.logit_scale, max=math.log(100.0)).exp()  # heads,1,1
+        if _USE_SDPA:
+            # 融合注意力:不物化 (Bn,heads,N,N),省显存;τ 折进 q,bias 当 additive mask,内置 scale=1
+            out = F.scaled_dot_product_attention(q * scale, k, v, attn_mask=self.bias(), scale=1.0)
+            out = out.transpose(1, 2).reshape(Bn, N, C)
+        else:
+            attn = (q @ k.transpose(-2, -1)) * scale           # Bn,heads,N,N
+            attn = attn + self.bias()
+            attn = attn.softmax(dim=-1)
+            attn = self.attn_drop(attn)
+            out = (attn @ v).transpose(1, 2).reshape(Bn, N, C)
+        return self.proj_drop(self.proj(out))</pre>
+<p><b>讲解。</b>标准多头注意力,但两处关键改造:</p>
+<ul>
+<li><b>QK-Norm</b>:对 \(q,k\) 沿 head_dim 做 <b>L2 归一化</b>再点积 → 得到的是<b>余弦相似度</b>,天然落在 \([-1,1]\),不会因维度增大或个别维爆炸而让 logits 失控。这是训练稳定、能"更深更窄"的关键(SwinV2 的做法)。</li>
+<li><b>每头可学习温度</b> \(\tau\):余弦值范围太小,softmax 会过平;乘一个可学习放大系数 \(\tau=\exp(\cdot)\) 恢复"锐度",且 <b>clamp 上限</b> \(\ln 100\) 防止过大。</li>
+</ul>
+<p>加相对位置偏置(§5)后 softmax、加权 \(v\)、输出投影。<code class="inl">_USE_SDPA</code> 分支用 PyTorch 融合注意力(FlashAttention 式,不物化 \(N\times N\) 矩阵,省显存),把 \(\tau\) 折进 \(q\)、偏置当加性 mask、内置 scale 设 1。</p>
+<p><b>数学。</b>多头把 \(C\) 拆成 \(h\) 头、每头维度 \(d_h=C/h\)。对每头:</p>
+<div class="math">$$\hat q=\frac{q}{\lVert q\rVert_2},\quad \hat k=\frac{k}{\lVert k\rVert_2},\qquad \tau=\exp\!\big(\min(s,\ \ln 100)\big)$$</div>
+<div class="math">$$\mathrm{Attn}(q,k,v)=\mathrm{softmax}\!\Big(\underbrace{\tau\,\hat q\hat k^{\top}}_{\in[-\tau,\tau]}\;+\;B\Big)\,v$$</div>
+<p>其中 \(B\) 是 §5 的相对位置偏置,\(s\) 是可学习参数 <code class="inl">logit_scale</code>(初值 \(\ln 10\))。对比普通注意力的 \(\dfrac{qk^\top}{\sqrt{d_h}}\):这里把"除 \(\sqrt{d_h}\)"换成了"先归一化、再乘可学习 \(\tau\)",数值范围可控得多。</p>
+
+
+<h2><span class="no">7</span>　SpectralMix2D:频域全局混合(AFNO 式)<span class="tag">可选全局</span></h2>
+<pre>class SpectralMix2D(nn.Module):
+    """轻量频域全局混合(AFNO 式):低模逐通道复滤波(depthwise)+ 通道线性混合。
+    少参拿全局感受野(卷积定理 O(N log N));参数 = 2·C·mh·mw + C²(远小于 FNO 的 C²·modes)。"""
+    def __init__(self, dim, modes=(12, 12)):
+        super().__init__()
+        self.mh, self.mw = modes
+        self.fr = nn.Parameter(torch.ones(dim, self.mh, self.mw))    # 复滤波实部(初始~1=近恒等,稳)
+        self.fi = nn.Parameter(torch.zeros(dim, self.mh, self.mw))   # 虚部初始 0
+        self.proj = nn.Linear(dim, dim)                              # 通道混合
+
+    def forward(self, h):  # h:(B,Pl,Lat,Lon,C)
+        B, Pl, Lat, Lon, C = h.shape
+        x = h.permute(0, 1, 4, 2, 3).reshape(B * Pl, C, Lat, Lon).float()
+        ft = torch.fft.rfft2(x, norm="ortho")
+        mh = min(self.mh, ft.shape[-2]); mw = min(self.mw, ft.shape[-1])
+        filt = torch.complex(self.fr[:, :mh, :mw], self.fi[:, :mh, :mw])  # (C,mh,mw)
+        out = torch.zeros_like(ft)
+        out[:, :, :mh, :mw] = ft[:, :, :mh, :mw] * filt[None]            # depthwise 逐模缩放
+        y = torch.fft.irfft2(out, s=(Lat, Lon), norm="ortho")
+        y = y.reshape(B, Pl, C, Lat, Lon).permute(0, 1, 3, 4, 2)
+        return self.proj(y)</pre>
+<p><b>讲解。</b>grid 之外的另一条"全局"路线(<code class="inl">global_mode="spectral"</code> 时启用):直接在<b>傅里叶域</b>做全局混合。依据<b>卷积定理</b>——空间上的全局卷积 = 频域里的<b>逐点复数乘</b>。只保留<b>低频模态</b>(\(m_h\times m_w\),对应大尺度环流),对每个通道乘一个可学习复滤波,再逆变换回空间,最后一层线性做通道混合。用极少参数拿到全局感受野,代价只有 \(O(N\log N)\) 的 FFT。</p>
+<p><b>数学。</b>设 \(\mathcal F\) 为二维 FFT,\(X\) 为某通道空间场,可学习复滤波 \(\Phi=\Phi_r+i\Phi_i\):</p>
+<div class="math">$$Y=\mathcal F^{-1}\!\Big(\ \Phi\odot \big[\mathcal F(X)\big]_{\text{低 }m_h\times m_w\text{ 模}}\ \Big),\qquad \text{再做通道混合 } \mathrm{proj}(Y)$$</div>
+<p>只对前 \(m_h\times m_w\) 个低频模乘滤波、其余置零(<b>低通</b>=保留大尺度、滤掉高频噪声)。<b>参数量</b> \(=\underbrace{2\,C\,m_h m_w}_{\text{复滤波}}+\underbrace{C^2}_{\text{通道混合}}\),远小于原版 FNO 的 \(C^2\cdot\text{modes}\)。实部初始化为 \(1\)、虚部 \(0\)(初始≈恒等,训练更稳)。</p>
+
+
+<h2><span class="no">8</span>　AttnFFN:一个混合子层 + 一个 FFN 子层<span class="tag g">核心块</span></h2>
+<pre>class AttnFFN(nn.Module):
+    """一个混合子层(block局部/grid全局/spectral频域全局)+ 一个 SwiGLU 子层, 均 pre-RMSNorm + LayerScale + DropPath。"""
+    def __init__(self, dim, win, num_heads, mode, mlp_ratio=4.0, drop_path=0.0, ls_init=1e-5):
+        super().__init__()
+        assert mode in ("block", "grid", "spectral")
+        self.mode = mode
+        self.win = win
+        self.norm1 = RMSNorm(dim)
+        if mode == "spectral":
+            self.mix = SpectralMix2D(dim)
+        else:
+            self.attn = Attention3D(dim, win, num_heads)
+        self.norm2 = RMSNorm(dim)
+        self.mlp = SwiGLU(dim, mlp_ratio)
+        self.ls1 = nn.Parameter(ls_init * torch.ones(dim))
+        self.ls2 = nn.Parameter(ls_init * torch.ones(dim))
+        self.drop_path = DropPath(drop_path)
+
+    def forward(self, x, res):
+        Pl, Lat, Lon = res
+        B, N, C = x.shape
+        shortcut = x
+        if self.mode == "spectral":
+            h = self.norm1(x).view(B, Pl, Lat, Lon, C)
+            h = self.mix(h).reshape(B, N, C)
+        else:
+            h = self.norm1(x).view(B, Pl, Lat, Lon, C)
+            h, _ = _pad3d(h, self.win)
+            pPl, pLat, pLon = h.shape[1:4]
+            if self.mode == "block":
+                w = block_partition(h, self.win)
+                w = self.attn(w)
+                h = block_reverse(w, self.win, B, pPl, pLat, pLon)
+            else:
+                w = grid_partition(h, self.win)
+                w = self.attn(w)
+                h = grid_reverse(w, self.win, B, pPl, pLat, pLon)
+            h = h[:, :Pl, :Lat, :Lon, :].reshape(B, N, C)
+        x = shortcut + self.drop_path(self.ls1 * h)
+        x = x + self.drop_path(self.ls2 * self.mlp(self.norm2(x)))
+        return x</pre>
+<p><b>讲解。</b>这是骨干的<b>标准积木</b>,一块含两个残差子层,都是 <b>pre-norm</b>(先归一化再进子层):第一子层是"混合器"(按 <code class="inl">mode</code> 选 block / grid / spectral),第二子层是 SwiGLU FFN。每个子层输出先过 <b>LayerScale</b>(逐通道可学习系数 \(\gamma\))再过 <b>DropPath</b>,最后加回残差。</p>
+<p>非 spectral 模式的 forward:token 序列 → 还原成 \((B,Pl,Lat,Lon,C)\) 空间张量 → <code class="inl">_pad3d</code> 补齐 → block/grid 分块 → <code class="inl">Attention3D</code> → 逆分块 → 裁回原尺寸 → 拉平回序列。</p>
+<p><b>数学。</b>记混合器为 \(\mathrm{Mix}\in\{\text{block, grid, spectral}\}\),两个残差更新为</p>
+<div class="math">$$x \leftarrow x + \mathrm{DropPath}\!\big(\gamma_1\odot \mathrm{Mix}(\mathrm{RMSNorm}(x))\big)$$</div>
+<div class="math">$$x \leftarrow x + \mathrm{DropPath}\!\big(\gamma_2\odot \mathrm{SwiGLU}(\mathrm{RMSNorm}(x))\big)$$</div>
+<p><b>LayerScale 为何初始化极小(1e-5)?</b> 让 \(\gamma\approx0\),训练初期每个子层≈<b>恒等映射</b>(\(x\leftarrow x+0\)),等价于"网络先是一条直通残差",随训练再慢慢放开各子层的贡献 → 深层网络训练更稳、不易发散。</p>
+
+
+<h2><span class="no">9</span>　MaxVit3DStudent:U 形组装与前向<span class="tag g">总装</span></h2>
+<pre># ----------------------------- 学生模型 -----------------------------
+class MaxVit3DStudent(nn.Module):
+    """U 形(encoder→downsample→mid→upsample→decoder)。
+    大部分层在 1/4 token 的下采样分辨率上算 → 直取 V(延迟)/ U(显存)。
+    depths=(enc, mid, dec) 为各阶段的 block+grid 对数; num_heads 为各阶段头数。"""
+    def __init__(self, img_size=(721, 1440), patch_size=(2, 4, 4),
+                 embed_dim=192, depths=(1, 3, 1), num_heads=(6, 12, 6),
+                 window_size=(2, 6, 12), mlp_ratio=4.0, drop_path=0.1,
+                 use_checkpoint=False, global_mode="grid"):
+        super().__init__()
+        self.use_checkpoint = use_checkpoint
+        self.global_mode = global_mode  # "grid"=稀疏全局注意力 / "spectral"=FNO频域全局
+        # 复用官方 stem/head(embed_dim 可配 → 缩窄省显存/参数;I/O 与教师严格一致)。
+        # 两套 onescience API 自适配:SCNet=统一 PanguEmbedding;abc66=PanguEmbedding2D/3D 分版。
+        if _PANGU_API == "unified":
+            self.patchembed2d = OneEmbedding(style="PanguEmbedding", img_size=img_size,
+                                             patch_size=patch_size[1:], Variables=7, embed_dim=embed_dim)
+            self.patchembed3d = OneEmbedding(style="PanguEmbedding", img_size=(13, *img_size),
+                                             patch_size=patch_size, Variables=5, embed_dim=embed_dim)
+            self.patchrecovery2d = OneRecovery(style="PanguPatchRecovery", img_size=img_size,
+                                               patch_size=patch_size[1:], in_chans=2 * embed_dim, out_chans=4)
+            self.patchrecovery3d = OneRecovery(style="PanguPatchRecovery", img_size=(13, *img_size),
+                                               patch_size=patch_size, in_chans=2 * embed_dim, out_chans=5)
+            self._ds_style, self._us_style = "PanguDownSample", "PanguUpSample"
+        else:
+            from onescience.modules.embedding.panguembedding2d import PanguEmbedding2D
+            from onescience.modules.embedding.panguembedding3d import PanguEmbedding3D
+            from onescience.modules.recovery.pangupatchrecovery2d import PanguPatchRecovery2D
+            from onescience.modules.recovery.pangupatchrecovery3d import PanguPatchRecovery3D
+            self.patchembed2d = PanguEmbedding2D(img_size=img_size, patch_size=patch_size[1:],
+                                                 in_chans=7, embed_dim=embed_dim)
+            self.patchembed3d = PanguEmbedding3D(img_size=(13, *img_size), patch_size=patch_size,
+                                                 in_chans=5, embed_dim=embed_dim)
+            self.patchrecovery2d = PanguPatchRecovery2D(img_size=img_size, patch_size=patch_size[1:],
+                                                        in_chans=2 * embed_dim, out_chans=4)
+            self.patchrecovery3d = PanguPatchRecovery3D(img_size=(13, *img_size), patch_size=patch_size,
+                                                        in_chans=2 * embed_dim, out_chans=5)
+            self._ds_style, self._us_style = "PanguDownSample3D", "PanguUpSample3D"
+
+        Pl = 8
+        Lat = math.ceil(img_size[0] / patch_size[1])   # 181
+        Lon = math.ceil(img_size[1] / patch_size[2])   # 360
+        Latd = math.ceil(Lat / 2)                       # 91
+        Lond = math.ceil(Lon / 2)                       # 180
+        self.res_full = (Pl, Lat, Lon)
+        self.res_down = (Pl, Latd, Lond)
+
+        # 复用官方下/上采样(I/O 与教师一致,权重从零随机初始化、随蒸馏训练)
+        self.downsample = OneSample(style=self._ds_style, in_dim=embed_dim,
+                                    input_resolution=self.res_full,
+                                    output_resolution=self.res_down)
+        self.upsample = OneSample(style=self._us_style, in_dim=embed_dim * 2,
+                                  out_dim=embed_dim,
+                                  input_resolution=self.res_down,
+                                  output_resolution=self.res_full)
+
+        ne, nm, nd = depths
+        dpr = torch.linspace(0, drop_path, (ne + nm + nd) * 2).tolist()
+        self._it = iter(dpr)
+
+        def mk(n, dim, heads):
+            blks = []
+            for _ in range(n):
+                blks.append(AttnFFN(dim, window_size, heads, "block", mlp_ratio, next(self._it)))
+                blks.append(AttnFFN(dim, window_size, heads, self.global_mode, mlp_ratio, next(self._it)))
+            return nn.ModuleList(blks)
+
+        self.enc = mk(ne, embed_dim, num_heads[0])
+        self.mid = mk(nm, embed_dim * 2, num_heads[1])
+        self.dec = mk(nd, embed_dim, num_heads[2])
+
+    def _run(self, blocks, x, res):
+        for blk in blocks:
+            if self.use_checkpoint and self.training:
+                x = checkpoint(blk, x, res, use_reentrant=False)
+            else:
+                x = blk(x, res)
+        return x
+
+    def forward(self, x):
+        surface = x[:, :7, :, :]
+        upper = x[:, 7:, :, :].reshape(x.shape[0], 5, 13, x.shape[2], x.shape[3])
+        surface = self.patchembed2d(surface)                       # B,192,181,360
+        upper = self.patchembed3d(upper)                           # B,192,7,181,360
+        x = torch.concat([surface.unsqueeze(2), upper], dim=2)     # B,192,8,181,360
+        B, C, Pl, Lat, Lon = x.shape
+        x = x.reshape(B, C, -1).transpose(1, 2)                    # B,N,192
+
+        x = self._run(self.enc, x, self.res_full)                  # 全分辨率
+        skip = x
+        x = self.downsample(x)                                     # B,N',384
+        x = self._run(self.mid, x, self.res_down)                  # 1/4 token(算力大头在此)
+        x = self.upsample(x)                                       # B,N,192
+        x = self._run(self.dec, x, self.res_full)
+
+        output = torch.concat([x, skip], dim=-1)                   # B,N,384
+        output = output.transpose(1, 2).reshape(B, -1, Pl, Lat, Lon)
+        out_surface = self.patchrecovery2d(output[:, :, 0, :, :])  # B,4,721,1440
+        out_upper = self.patchrecovery3d(output[:, :, 1:, :, :])   # B,5,13,721,1440
+        return out_surface, out_upper</pre>
+<p><b>讲解(总装)。</b><code class="inl">__init__</code> 干三件事:① 按探测到的 API 建<b>官方 stem/head</b>(2D/3D Patch Embedding 与 Recovery,以及下/上采样)——复用它们保证与教师<b>I/O 严格一致</b>、可蒸馏可评测,同时 <code class="inl">embed_dim</code> 可调窄来省参数/显存;② 算出全分辨率 <span class="shape">(8,181,360)</span> 与下采样分辨率 <span class="shape">(8,91,180)</span>;③ 用 <code class="inl">mk()</code> 按 <code class="inl">depths=(ne,nm,nd)</code> 造三段,每段每层都是"<b>block 局部 + 全局(grid/spectral)</b>"<b>一对</b>交替。<code class="inl">drop_path</code> 用 <code class="inl">linspace</code> 从 0 递增分配到各子层(越深丢越多)。</p>
+<p><b>forward 形状流</b>(记 \(N=8\times181\times360\)):</p>
+<ul class="kv">
+<li>72 通道拆成 <b>surface 7</b>(4 地面 + 3 静态)与 <b>upper 65</b>(reshape 成 5 变量 × 13 层),分别过 2D / 3D Patch Embed;</li>
+<li>沿"层"维拼成 8 层 → 拉平成 token <span class="shape">[B, N, 192]</span>;</li>
+<li><b>enc</b>(全分辨率)→ 存 <b>skip</b> → <b>downsample</b>(纬经各减半 → token 变 1/4、通道翻倍 384)→ <b>mid</b>(<b>算力大头在此</b>,因为 token 只剩 1/4)→ <b>upsample</b> 回全分辨率 → <b>dec</b>;</li>
+<li>与 skip 沿通道 <b>concat</b>(192→384)→ Recovery 反卷积 → 地面 <span class="shape">[B,4,721,1440]</span> + 高空 <span class="shape">[B,5,13,721,1440]</span>。</li>
+</ul>
+<p><b>数学(轻量化从哪来)。</b>下采样把空间 \(H,W\) 各减半,token 数 \(N\to N/4\)。注意力/FFN 的开销随 token 数近似线性,故把<b>最深、最多层的 mid 段放在 1/4 token 上算</b>,总计算量与激活显存都大幅下降——这正是压低<b>推理时长 V</b> 与<b>显存 U</b> 的结构性来源。默认配置 <code class="inl">depths=(1,3,1)</code> 也把"重"的一段(3 对)全放在了下采样域。<code class="inl">use_checkpoint</code> 则在训练时用<b>梯度检查点</b>(前向不存中间激活、反向重算)进一步换显存。</p>
+
+
+<h2><span class="no">10</span>　入口:参数量自检</h2>
+<pre>if __name__ == "__main__":
+    m = MaxVit3DStudent()
+    n = sum(p.numel() for p in m.parameters())
+    print(f"MaxVit3DStudent params: {n/1e6:.2f} M")</pre>
+<p><b>讲解。</b>直接 <code class="inl">python maxvit3d_student.py</code> 会构造默认学生并打印参数量(百万计)。这是最快的"能否 import、形状是否自洽"冒烟测试。改 <code class="inl">embed_dim</code> / <code class="inl">depths</code> 即可在参数量(U)与精度(W)之间取舍。</p>
+
+<hr>
+<div class="note">
+<p style="margin:0"><b>一句话总览。</b>这份学生网络 = <b>官方 stem/head</b>(保 I/O 对齐)+ 中间自研<b>骨干</b>。骨干的每一块是 <code class="inl">AttnFFN</code>:pre-<b>RMSNorm</b> → (<b>block</b> 局部 / <b>grid</b>·<b>spectral</b> 全局)混合 → <b>LayerScale·DropPath</b> 残差 → <b>SwiGLU</b> FFN;注意力用 <b>QK-Norm</b> 余弦 + 可学习温度 + 相对位置偏置。整体 <b>U 形</b>,把最重的层放到 1/4 分辨率上算,从结构上同时压 U(大小/显存)与 V(时长),又靠蒸馏保住 W(精度)。</p>
+</div>
+<p class="meta">打印建议:用 Chrome / Edge 打开本文件,等公式渲染出来后 Ctrl+P;"背景图形"勾选可保留左侧代码色条(不勾也不影响阅读)。</p>
+
+</body>
+</html>

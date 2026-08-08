@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>决赛三赛题推断与解题(含 DCU 测试运行)</title>
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},svg:{fontCache:'global'},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<style>
+  :root{ --ink:#1a1a1a; --muted:#5b6470; --line:#d9dee5; --code-bg:#f6f8fa; --accent:#0b5cad; --accent2:#8a5a00; --box:#eef4fb; --ok:#0a7d33; }
+  *{ box-sizing:border-box; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ margin:0 auto; max-width:900px; padding:32px 34px 80px; background:#fff; color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif; font-size:15.5px; line-height:1.72; }
+  h1{ font-size:25px; margin:0 0 4px; }
+  h2{ font-size:20px; margin:30px 0 10px; padding-top:10px; border-top:2px solid var(--ink); }
+  h2 .no{ color:var(--accent); }
+  h3{ font-size:16px; margin:16px 0 6px; color:var(--accent); }
+  p{ margin:9px 0; }
+  .sub{ color:var(--muted); font-size:13.5px; }
+  .meta{ color:var(--muted); font-size:12.5px; font-family:ui-monospace,Consolas,monospace; }
+  code.inl{ background:var(--code-bg); padding:1px 5px; border-radius:4px; font-family:ui-monospace,Consolas,monospace; font-size:13px; }
+  pre{ background:var(--code-bg); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:6px;
+    padding:12px 14px; overflow-x:auto; margin:12px 0; font-family:ui-monospace,Consolas,monospace; font-size:12.4px; line-height:1.5; white-space:pre; }
+  .note{ background:var(--box); border:1px solid #cfe0f2; border-radius:6px; padding:10px 14px; margin:12px 0; }
+  .ok{ background:#eafaf0; border:1px solid #b6e6c8; border-radius:6px; padding:10px 14px; margin:12px 0; }
+  .q{ background:#fbf6ff; border:1px solid #e0cdf2; border-left:3px solid #8a5ad0; border-radius:6px; padding:10px 14px; margin:12px 0; }
+  .lead{ background:var(--box); border-radius:8px; padding:14px 18px; margin:14px 0; }
+  ul{ margin:8px 0; padding-left:22px; } li{ margin:4px 0; }
+  table{ border-collapse:collapse; width:100%; margin:12px 0; font-size:13.5px; }
+  th,td{ border:1px solid var(--line); padding:6px 10px; text-align:left; } th{ background:var(--box); }
+  .tag{ display:inline-block; font-size:11.5px; color:#fff; background:var(--accent); border-radius:4px; padding:1px 8px; margin-left:6px; vertical-align:2px; }
+  hr{ border:none; border-top:1px solid var(--line); margin:24px 0; }
+  @media print{ body{ max-width:none; padding:0 6mm; font-size:11pt; } h2,h3{ page-break-after:avoid; } pre,.note,.ok,.q,table,figure{ page-break-inside:avoid; } a{ color:var(--ink); } }
+</style>
+</head>
+<body>
+
+<h1>决赛三赛题推断与解题</h1>
+<p class="sub">先导杯气象大模型轻量化 · 决赛备战 —— 根据决赛说明推断三类赛题,给方法 + 在海光 DCU 上实测验证</p>
+
+<div class="q">
+<b>决赛说明原文</b>:"决赛<b>增加气象预测任务难度</b>,并强化对<b>全量模型本身轻量化</b>及<b>国产硬件推理部署效率</b>要求。"
+</div>
+
+<div class="lead">
+<p style="margin-top:0">三句话对应三个强化方向,由此推断三类赛题各一例,并各配一个<b>可在 DCU 上真跑</b>的验证测试(见 <code class="inl">代码/finals_tests.py</code>):</p>
+<ul style="margin-bottom:0">
+<li><b>赛题①(任务难度↑)</b> → <b>多步自回归预测</b>:从单步 t+6h 改为滚动预测 t+24h/72h,误差累积使任务更难。</li>
+<li><b>赛题②(全量模型轻量化↑)</b> → <b>压缩官方 Pangu 全模型本身</b>(量化/剪枝/分解),而非只训小学生。</li>
+<li><b>赛题③(国产硬件部署效率↑)</b> → <b>DCU 上把整模型推理时长(V)压下去</b> + 端到端部署。</li>
+</ul>
+</div>
+
+<div class="note">评分回顾:总分 = <b>U</b> 轻量化(模型大小+显存) + <b>V</b> 推理时长(只计时 <code class="inl">model(x)</code>) + <b>W</b> 预测性能(逐通道 RMSE + ACC)。三个强化方向正好分别加压 W(更难任务)、U、V。</div>
+
+<h2><span class="no">①</span>　任务难度↑:多步自回归预测 <span class="tag">压 W</span></h2>
+<h3>可能的题目形式</h3>
+<p>初赛只预测<b>单步</b>(t → t+6h)。决赛"增加难度"最可能的做法:<b>自回归滚动</b>——把上一步预测<b>喂回</b>模型,连续预测 t+6h → t+12h → … → t+24h(甚至 t+72h),按<b>更长预报时效</b>的 RMSE/ACC 评分。也可能叠加:更多变量/层次、极端天气加权。</p>
+<h3>为什么更难:误差累积</h3>
+<p>设单步映射 \(f\),滚动 \(k\) 步为 \(\hat x_{k}=f^{(k)}(x_0)\)。单步误差 \(\varepsilon\) 会被后续步<b>逐级放大</b>:若 \(f\) 的局部误差增益(Lipschitz)为 \(L\),则</p>
+<div class="math">$$\lVert \hat x_k - x_k\rVert \;\lesssim\; \sum_{j=1}^{k} L^{\,k-j}\,\varepsilon_j \quad\Longrightarrow\quad \text{大气混沌 } L\gtrsim 1 \text{ 时误差随步数快速上升}$$</div>
+<p>所以"多步"天然比"单步"难——这就是决赛加难度的抓手。</p>
+<h3>解题思路</h3>
+<ul>
+<li><b>Rollout 训练(push-forward)</b>:训练时也做多步展开,让损失覆盖 t+6…t+6k,模型学会抑制误差累积(而非只对单步最优)。</li>
+<li><b>物理约束后置层</b>:每步预测后加守恒/平滑校正,压住漂移(见融合升级路线)。</li>
+<li><b>谱损失</b>:惩罚高频误差,治多步预测的"过平滑",保住小尺度结构。</li>
+</ul>
+<h3>DCU 测试运行 <code class="inl">python finals_tests.py 1</code></h3>
+<pre># 用官方教师 Pangu 做 4 步自回归,量每步对真值的 RMSE(归一化),看误差累积
+with torch.no_grad():
+    for k in range(1, len(frames)):
+        osf, oua = teacher(x)                 # 预测 t+6k
+        r = rmse69(osf, oua, true_k)          # 对真值 RMSE
+        x = torch.cat([osf, smask, oua], 1)   # 预测喂回,重构下一步 72ch 输入</pre>
+<div class="ok" id="r1"><b>DCU 实测</b>(教师 Pangu 自回归 4 步,归一化 RMSE):<b>t+6h = 0.133 → t+12h = 0.186 → t+18h = 0.223 → t+24h = 0.260</b>。误差随步数<b>单调上升</b>——多步预测确实更难,验证了"任务难度↑"的机理,也说明决赛若考多步,必须用 rollout 训练/物理约束抑制累积。</div>
+
+<h2><span class="no">②</span>　全量模型轻量化↑:压缩 Pangu 本身 <span class="tag">压 U</span></h2>
+<h3>可能的题目形式</h3>
+<p>"<b>全量模型本身</b>轻量化"——不是训一个小学生,而是<b>直接压缩官方大模型 Pangu</b>(64.22M 真参数),在保精度前提下减小体积/显存。常见三条:<b>量化</b>、<b>剪枝</b>、<b>低秩分解</b>。</p>
+<h3>方法:INT8 权重量化(最稳、最通用)</h3>
+<p>把每个权重张量按<b>逐输出通道对称 INT8</b> 量化:</p>
+<div class="math">$$s=\frac{\max|W|}{127},\qquad W_q=\mathrm{round}\!\Big(\frac{W}{s}\Big)\in[-127,127],\qquad \hat W = s\cdot W_q$$</div>
+<p>权重从 fp32(4 字节)降到 int8(1 字节)+ 每通道一个 fp32 scale,<b>体积≈1/4</b>。逐通道 scale 使量化误差很小,对气象这种平滑场几乎无损。剪枝(去小范数通道)、低秩(SVD 分解大 Linear)可叠加。</p>
+<h3>DCU 测试运行 <code class="inl">python finals_tests.py 2</code></h3>
+<pre># 对 Pangu 所有 2D+ 权重做逐通道 INT8(模拟),量体积压缩 + 对 fp32 的预测差
+for name, p in teacher.named_parameters():
+    if p.ndim >= 2:
+        wdq, scale = quant_int8_perchannel(p.data)   # 量化→反量化
+        p.data.copy_(wdq)                            # 就地替换
+# 比较:fp32 体积 vs INT8 体积;量化前后预测的归一化 RMSE(越小越无损)</pre>
+<div class="ok" id="r2"><b>DCU 实测</b>(对官方 Pangu 全部 87 个 2D+ 权重张量做逐通道 INT8):模型体积 <b>256.9 MB(fp32)→ 64.9 MB(INT8),压缩 3.96×</b>;量化 vs fp32 的预测差 <b>RMSE(归一化)= 0.00964</b>(近无损)。证明"全量模型本身"INT8 权重量化就能拿到 ≈4× 体积压缩几乎不掉精度,是 U 的稳妥抓手(可再叠剪枝/低秩)。</div>
+
+<h2><span class="no">③</span>　国产硬件推理部署效率↑:DCU 上压 V <span class="tag">压 V</span></h2>
+<h3>可能的题目形式</h3>
+<p>"<b>国产硬件(海光 DCU)推理部署效率</b>"——考核在 DCU 上把<b>整模型推理时长 V</b> 压到阈值内、端到端可部署(权重加载、算子、精度、显存)。评分只计时 <code class="inl">model(x)</code>。</p>
+<h3>方法(从稳到激进)</h3>
+<ul>
+<li><b>fp16 半精度</b>(<code class="inl">model.half()</code> + 输入 half):一行,DCU 上实测推理更快、显存更省、精度基本不掉——最稳的 V 优化。</li>
+<li><b>算子/矩阵库</b>:hipBLASLt / MatrixCore、注意力用现成 flash 核;避免 DCU 上反而变慢的路径(实测 hipBLASLt 在某些形状更慢、torch.compile 崩 inductor、channels_last 崩——都已排除)。</li>
+<li><b>显存分块 tiling</b>:激活占大头,空间分块降峰值显存(帮 U)。</li>
+<li><b>计时规范</b>:必须 <code class="inl">torch.cuda.synchronize()</code> 前后夹取中位数,只包 <code class="inl">model(x)</code>(与官方计时区一致)。</li>
+</ul>
+<h3>DCU 测试运行 <code class="inl">python finals_tests.py 3</code></h3>
+<pre># fp32 vs fp16 计时(warmup + synchronize + 中位数),只计 model(x)
+med32 = bench(teacher, x)            # fp32
+teacher.half(); xh = x.half()
+med16 = bench(teacher, xh)           # fp16
+print(f"提速 {med32/med16:.2f}×  推理时长 -{(1-med16/med32)*100:.0f}%")</pre>
+<div class="ok" id="r3"><b>DCU 实测</b>(官方 Pangu 全模型,只计时 <code class="inl">model(x)</code>,warmup+synchronize+中位数):<b>fp32 = 949.4 ms → fp16 = 715.6 ms</b>,<b>提速 1.33×、推理时长 -25%</b>;峰值显存 <b>10.32 GB → 5.47 GB(-47%)</b>。一行 <code class="inl">model.half()</code> 直接把 V 降 1/4、显存降近一半,精度基本不掉——国产硬件部署的第一优先优化。</div>
+
+<h2><span class="no">四</span>　综合备战建议</h2>
+<ul>
+<li><b>W(更难任务)</b>:准备 rollout 多步训练 + 物理约束/谱损失;评测按更长时效算 RMSE/ACC。</li>
+<li><b>U(全模型轻量化)</b>:INT8 权重量化是最稳基线(≈4× 体积、近无损);再叠剪枝/低秩冲更高压缩比。</li>
+<li><b>V(DCU 部署)</b>:fp16 一行先拿稳收益;再谨慎试算子库/flash 核,凡改动都按规范计时验证、别信"应该更快"。</li>
+<li><b>闭卷提醒</b>:决赛无大模型,能参考的只有环境自带包与官方文档、onescience 源码——把这三份测试脚本与本文档背熟即可现场复现。</li>
+</ul>
+<p class="meta">配套:代码/finals_tests.py(三题一键跑) · 上级 onescience网络库参考.md / maxvit3d_student_代码精讲.html</p>
+
+</body>
+</html>
